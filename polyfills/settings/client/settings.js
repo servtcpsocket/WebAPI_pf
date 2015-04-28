@@ -200,9 +200,28 @@
     removeObserver: removeObserver
   };
 
+  Object.defineProperty(window.navigator.mozSettings, 'onsettingschange', {
+    set: function(cb) {
+      this._onsettingschange = cb;
+      this._onsettingschangeId = this._onsettingschangeId || ++_currentRequestId;
+      var commandObject = {
+        serialize: function() {
+          return {
+            id: ++_currentRequestId,
+            data: {
+              operation: 'onsettingschange'
+            },
+            processAnswer: answer => cb(answer.result)
+          };
+        }
+      };
+      navConnPromise.then(navConnHelper => navConnHelper.sendObject(commandObject));
+    }
+  });
+
   var navConnPromise = new NavConnectHelper();
 
-  navConnHelper.then(function(){}, e => {
+  navConnPromise.then(function(){}, e => {
     debug('Got an exception while connecting ' + e);
     window.navigator.mozSettings.createLock = null;
     window.navigator.mozSettings.addObserver = null;
