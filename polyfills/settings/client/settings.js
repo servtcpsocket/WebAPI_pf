@@ -78,14 +78,15 @@
       // When this is executed the promise should have resolved and thus we
       // should have this
       data.lockId = _lockId;
+      var self = this;
       return {
         id: ++_currentRequestId,
         data: data,
         processAnswer: function(answer) {
           if (answer.error) {
-            this._fireError(answer.error);
+            self._fireError(answer.error);
           } else {
-            this._fireSuccess(answer.result);
+            self._fireSuccess(answer.result);
           }
         }
       };
@@ -112,7 +113,7 @@
       });
     };
 
-    this._serialize = function() {
+    this.serialize = function() {
       return {
         id: ++_currentRequestId,
         data: {
@@ -120,7 +121,7 @@
         },
         processAnswer: function(answer) {
           if (!answer.error) {
-            _resolve(answer._id);
+            _resolve(answer.id);
           } else {
             _permaFail = 'Error creating lock: ' + answer.error;
             _reject(_permaFail);
@@ -155,7 +156,7 @@
           operation: 'addObserver',
           settingName: setting
         },
-        processAnswer: answer => callback(answer.result)
+        processAnswer: answer => callback(answer.data)
       };
     };
   }
@@ -174,7 +175,10 @@
 
   // Allows to bind a function to any change on a given settings
   var addObserver = function(setting, callback) {
-    var observer = new Observer(callback);
+    var observer = new Observer(setting, callback);
+    if (!_observers[setting]) {
+      _observers[setting] = {};
+    }
     _observers[setting][callback] = observer;
     navConnPromise.then(navConnHelper => navConnHelper.sendObject(observer));
   };
@@ -269,7 +273,7 @@
           // }
           sendObject: function(aObject) {
             var serialized = aObject.serialize();
-            _messageHandlers[aObject.id] = aObject.processAnswer;
+            _messageHandlers[serialized.id] = serialized.processAnswer;
             _port.postMessage({id: serialized.id, data: serialized.data});
           }
         };
@@ -313,18 +317,22 @@
     });
 
     this._fireSuccess = function(result) {
-      if (_fired) {
+      if (!_fired) {
         _result = result;
+        _fired = true;
         _resolve(result);
-        this.onsuccess && typeof this.onsuccess = 'function' && this.onsuccess();
+        this.onsuccess &&
+          typeof this.onsuccess === 'function' && this.onsuccess();
       }
     };
 
     this._fireError = function(error) {
-      if (_fired) {
+      if (!_fired) {
         _error = error;
+        _fired = true;
         _reject(error);
-        this.onerror && typeof this.onerror = 'function' && this.onerror(error);
+        this.onerror
+          && typeof this.onerror === 'function' && this.onerror(error);
       }
     };
   }
