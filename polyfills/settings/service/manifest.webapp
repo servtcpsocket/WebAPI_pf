@@ -11,7 +11,7 @@
     "128": "/swshim/style/icons/icon.png"
   },
   "connections": {
-    "https://testServiceConnect.hostedweb.tid.es/services": {
+    "https://settingsservice.gaiamobile.org": {
       "description": "Test SHIM IAC",
       "rules": {}
     }

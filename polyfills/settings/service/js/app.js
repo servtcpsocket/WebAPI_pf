@@ -2,7 +2,7 @@
   'use strict';
 
   function debug(str) {
-    console.log("SettingsService -*-:" + str);
+    console.log('SettingsService -*-:' + str);
   }
 
   // This is a very basic sample app that uses a SW and acts as a server for
@@ -72,7 +72,7 @@
       });
     }
 
-    if (request.operation === 'createLock') {
+    if (requestOp.operation === 'createLock') {
       _locks[request.id] = _settings.createLock();
       // Let's assume this works always..
       channel.postMessage({remotePortId: remotePortId, data: {id: request.id}});
@@ -85,6 +85,10 @@
       _settings.onsettingchange = observerTemplate;
     } else {
       // It's either a get or a set... or an error but let's assume it isn't :P
+      if (_locks[requestOp.lockId].closed) {
+        _locks[requestOp.lockId] = _settings.createLock();
+      }
+
       _locks[requestOp.lockId][requestOp.operation](requestOp.settings).
         then(result => {
           channel.postMessage({
