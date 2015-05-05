@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>FFOS: Service-like apps</title>
+
+		<meta name="description" content="Why do I keep getting into these problems?">
+		<meta name="author" content="Antonio M. Amaya">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<link rel="stylesheet" href="css/reveal.min.css">
+		<link rel="stylesheet" href="css/theme/default.css" id="theme">
+
+		<!-- For syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- If the query includes 'print-pdf', use the PDF print sheet -->
+		<script>
+			document.write( '<link rel="stylesheet" href="css/print/' + ( window.location.search.match( /print-pdf/gi ) ? 'pdf' : 'paper' ) + '.css" type="text/css" media="print">' );
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+
+				<section>
+					<h1>FFOS Service like apps</h1>
+					<h3>Using navigator.connect... <span class="fragment roll-in">or any other x-origin mechanism</p></h3>
+					<p>
+						<small>Antonio (antoniomanuel.amayacalvo@telefonica.com)<br>
+                   Carmen (carmen.jimenezcabezas@telefonica.com)</small>
+					</p>
+				</section>
+				<section>
+					<section>
+						<h2>What's this about?</h2>
+          </section>
+          <section>
+            <h2>Making writing FFOS apps sexier</h2>
+            <p>AKA, making apps that use FFOS apis:
+              <ul>
+                <li>Not signed</li>
+                <li>Work everywhere as if it were a FFOS!</li>
+            </p>
+          </section>
+          <section>
+						<h3>Or rather...</h3>
+          </section>
+          <section>
+						<h2>What is this NOT about?</h2>
+          </section>
+          <section>
+						<h2>The actual x-origin API we use for that</h2>
+            <p>We have used navigator.connect because it's already on the way to being implemented by another browser. Other than that, it's really irrelevant which communication API is used </p>
+          </section>
+
+					</section>
+          <section>
+					  <h2 class="fragment highlight-red">Writing privileged apps is a PITA</h2>
+						<h2 class="fragment roll-in">And writing signed apps is <b>still</b> going to be a PITA</h2>
+            <p class="fragment roll-in">Packaging! Signing! Testing! Repackaging! Resigning!</p>
+						<h3 class="fragment roll-in">Sorry if you thought otherwise!</h3>
+				  </section>
+          <section>
+					  <h2 class="fragment highlight-red">Bazillions of web sites should mean bazillion of apps</h2>
+						<h3 class="fragment roll-in">And yet...</h3>
+					  <h2 class="fragment roll-in">We're not getting traction</h2>
+            <h3 class="fragment roll-in">So let's try something different!</h3>
+				  </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>So what can we do about this?</h2>
+            <img height="400" src="imgs/Clueless Morgan.jpg" />
+          </section>
+          <section>
+            <h3>Assume most people are harmless!</h3>
+            <img src="imgs/1038.jpg"/>
+            <h4 class="fragment roll-in">And give unsigned access to the APIs!</h4>
+            <p class ="fragment roll-in">
+              No, seriously!
+            </p>
+          </section>
+          <section>
+            <h3>But on a controlled way</h3>
+            <p class ="fragment roll-in">
+              You can breathe normally now
+            </p>
+            <p class ="fragment roll-in">
+              Seriously, you were looking blue there for a moment!
+            </p>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>Enter Sandman!</h2>
+            <h2 class="fragment roll-in">Er I mean Services</h2>
+          </section>
+          <section>
+            <h3>I should add a image here</h3>
+            <h4 class="fragment roll-in">But I didn't really had time</h4>
+            <p class ="fragment roll-in">
+              So you're going to have to do with some code
+            </p>
+          </section>
+          <section>
+            <h3>The idea, take 1</h3>
+            <h4 class ="fragment roll-in">Add a new class of system apps: services</h4>
+          </section>
+          <section>
+            <h3 class ="fragment roll-in">Client code</h3>
+					<pre class="fragment roll-in"><code data-trim>
+navigator.connect(SETTINGS_SERVICE).then(port => {
+  debug('Successfuly established connection to ' + SETTINGS_SERVICE);
+  _port = port;
+  port.onmessage = function (evt) {
+    var handler = _getHandler(evt);
+    if (!handler) {
+      debug('Huh? Got an message with ' + JSON.stringify(evt.data) +
+            ' that I don\'t know what to do with. Discarding!');
+      return;
+     }
+    handler(evt.data);
+  };
+}
+					</code></pre>
+          </section>
+          <section>
+            <h3 class="fragment roll-in">Service code</h3>
+					<pre class="fragment roll-in"><code data-trim>
+this.onconnect = function(msg) {
+  debug('SW onconnect: We should have a port here on msg.source. ' +
+        (msg.source.postMessage ? 'yes!' : 'no :('));
+
+  // TO-DO: This is not very secure... but we could, er should, control the origin here!
+  msg.acceptConnection(true);
+
+  var remotePort = msg.source;
+  var myPortId = this._portId++;
+
+  remotePort.onmessage = aMsg => {
+    // TO-DO: We should implement access control here also!
+    var requestId = aMsg.data.id;
+    if (requestId) {
+      debug('onmessage. Got Request:' + JSON.stringify(aMsg.data));
+      // In sw APIS do not work!!!! We need to request it to the main thread
+
+      this.channelToMT.then(channel => {
+        // TO-DO: Multiplex the channel!
+        channel.postMessage({remotePortId: myPortId, remoteData: aMsg.data});
+      });
+    } else {
+      // Hmm...
+      debug('onmessage: got a message without id');
+    }
+  };
+};
+					</code></pre>
+          </section>
+        </section>
+
+        <section>
+          <section>
+            <h2>This is still way too complicated!</h2>a
+            <h3 class="fragment roll-in">And we already have APIs for all those things</h3>
+          </section>
+          <section>
+            <h2>So let's just rewrite the APIs using this!</h2>
+					<pre class="fragment roll-in"><code data-trim>
+// This will have to be a SettingsManager object...
+// Note that since mozSettings constructor is synchronous but we can't make
+// this synchronous, this has an unfortunate difference where the object might
+// disappear later.
+window.navigator.mozSettings = {
+  createLock: createLock,
+  addObserver: addObserver,
+  removeObserver: removeObserver
+};
+
+// Returns a SettingsLock object to safely access settings asynchronously.
+// Note that the lock might be created and yet everything fail on it...
+var createLock = function() {
+  var lock = new FakeSettingsLock();
+  navConnPromise.then(navConnHelper => navConnHelper.sendObject(lock));
+  return lock;
+};
+
+// Allows to bind a function to any change on a given settings
+var addObserver = function(setting, callback) {
+  var observer = new Observer(callback);
+  _observers[setting][callback] = observer;
+  navConnPromise.then(navConnHelper => navConnHelper.sendObject(observer));
+};
+
+// Allows to unbind a function previously set with addObserver.
+var removeObserver = function(setting, callback) {
+  if (!_observers[setting][callback]) {
+    return;
+  }
+  var obRemoval = new ObserverRemoval(_observers[setting][callback]);
+  navConnPromise.then(navConnHelper => navConnHelper.sendObject(obRemoval));
+  delete _observers[setting][callback];
+};
+
+
+					</code></pre>
+          </section>
+        </section>
+        <section>
+         <h3>Enter push</h3>
+         <h4 class="fragment roll-in">And the only limit is your imagination!</h4>
+         <p>
+            <ol>
+              <li class="fragment roll-in">Send SMS from your phone using your desktop browser?<span style="color: red;" class="fragment roll-in">: Gotcha!</span></li>
+              <li class="fragment roll-in">Find/block your phone via SMS from your desktop?<span style="color: red;" class="fragment roll-in">: Why, yes!</span></li>
+              <li class="fragment roll-in">Use the same phone specific (same code!) on the phone and desktop?<span style="color: red;" class="fragment roll-in">: Of course!</span></li>
+              <li class="fragment roll-in">Write a *cough*Known IM service*cough* that uses SMS/phone/whatever to identify the user ?<span style="color: red;" class="fragment roll-in">: Yep!</span></li>
+              <li class="fragment roll-in">Increase your success with your favorite sex?<span style="color: red;" class="fragment roll-in">: On the next version!</span></li>
+            </ol>
+         </p>
+         <h3 class="fragment roll-in">And all of that without signing the app!</h3>
+         <p class="fragment roll-in">It does <b>not</b> even have to be an app. Forget the manifest</p>
+        </section>
+				<section>
+					<h2>Write once, run everywhere, do everything FFOS can do!</h2>
+          <h3>It doesn't get sexier than that</h3>
+				</section>
+			</div>
+
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.min.js"></script>
+
+		<script>
+
+			// Full list of configuration options available here:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+				transition: Reveal.getQueryHash().transition || 'default', // default/cube/page/concave/zoom/linear/fade/none
+
+				// Optional libraries used to extend on reveal.js
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+					{ src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+					// { src: 'plugin/search/search.js', async: true, condition: function() { return !!document.body.classList; } }
+					// { src: 'plugin/remotes/remotes.js', async: true, condition: function() { return !!document.body.classList; } }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
