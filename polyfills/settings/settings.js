@@ -215,7 +215,7 @@
             data: {
               operation: 'onsettingschange'
             },
-            processAnswer: answer => cb(answer.result)
+            processAnswer: answer => cb(answer.data)
           };
         }
       };
