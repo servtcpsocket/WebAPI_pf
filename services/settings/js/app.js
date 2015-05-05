@@ -81,7 +81,7 @@
       _settings.addObserver(requestOp.settingName, _observers[request.id]);
     } else if (requestOp.operation === 'removeObserver') {
       _settings.removeObserver(_observers[request.id]);
-    } else if (requestOp.operation === 'onsettingchange') {
+    } else if (requestOp.operation === 'onsettingschange') {
       _settings.onsettingchange = observerTemplate;
     } else {
       // It's either a get or a set... or an error but let's assume it isn't :P
