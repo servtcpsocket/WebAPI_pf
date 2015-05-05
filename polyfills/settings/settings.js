@@ -33,7 +33,8 @@
 //             operation: 'addObserver',
 //             settingName: setting
 //           },
-// Answer: Will be invoked when there's activity with the MozSettingsEvent (like) object:
+// Answer: Will be invoked when there's activity with the MozSettingsEvent
+//  (like) object:
 //    { id: requestId,
 //      data: mozSettingsEvent }
 
@@ -187,10 +188,11 @@
   window.navigator.mozSettings = {
     createLock: createLock,
     addObserver: addObserver,
-    removeObserver: removeObserver, 
+    removeObserver: removeObserver,
     set onsettingschange(cb) {
       this._onsettingschange = cb;
-      this._onsettingschangeId = this._onsettingschangeId || ++_currentRequestId;
+      this._onsettingschangeId = this._onsettingschangeId ||
+                                   ++_currentRequestId;
       var commandObject = {
         serialize: function() {
           return {
@@ -202,7 +204,8 @@
           };
         }
       };
-      navConnPromise.then(navConnHelper => navConnHelper.sendObject(commandObject));
+      navConnPromise.
+        then(navConnHelper => navConnHelper.sendObject(commandObject));
     }
   };
 
