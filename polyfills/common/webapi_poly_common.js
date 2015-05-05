@@ -13,8 +13,9 @@
   //       * data: A cloneable/transferrable object with the data that must be
   //         sent to the Worker.
   //       * processAnswer: A callback that will be called whenever there is
-  //         an answer for this petition. Note that this callback can be executed
-  //         0-n times, depending on what the service is expected to do.
+  //         an answer for this petition. Note that this callback can be
+  //         executed  0-n times, depending on what the service is expected to
+  //         do.
   function NavConnectHelper(serviceURL) {
 
     function debug(text) {
@@ -22,7 +23,8 @@
     }
 
     return new Promise((resolve, reject) => {
-      // navigator.connect port with the settings service, when the connection is established.
+      // navigator.connect port with the settings service, when the connection
+      // is established.
       var _port = null;
 
       var _messageHandlers = {};
@@ -52,7 +54,8 @@
           //  {
           //    id: A numeric identifier for this operation
           //    data: Some extra data that the server will need
-          //    processAnswer: a function that will process the answer for this message
+          //    processAnswer: a function that will process the answer for this
+          //    message
           // }
           sendObject: function(aObject) {
             var serialized = aObject.serialize();
