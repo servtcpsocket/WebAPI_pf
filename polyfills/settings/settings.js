@@ -40,8 +40,8 @@
 
 (function(window) {
 
-  function debug(t) {
-    console.log(t);
+  function debug(text) {
+    console.log('*-*-*- Settings PF: ' + text);
   }
 
   if (window.navigator.mozSettings) {
@@ -74,28 +74,14 @@
 
     this.closed = false;
 
-    var _serializeRequest = function(data) {
-      // When this is executed the promise should have resolved and thus we
-      // should have this
-      data.lockId = _lockId;
-      var self = this;
-      return {
-        id: ++_currentRequestId,
-        data: data,
-        processAnswer: function(answer) {
-          if (answer.error) {
-            self._fireError(answer.error);
-          } else {
-            self._fireSuccess(answer.result);
-          }
-        }
-      };
-    };
-
     function _createAndQueueRequest(data) {
-      var request = new FakeDOMRequest();
-      request.serialize = _serializeRequest.bind(request, data);
-      Promise.all([navConnPromise, _lock]).then(values => values[0].sendObject(request));
+      var request = new FakeDOMRequest(++_currentRequestId, data);
+      Promise.all([navConnPromise, _lock]).then(values => {
+        // When this is executed the promise should have resolved and thus we
+        // should have this.
+        request.data.lockId = _lockId;
+        values[0].sendObject(request);
+      });
       return request;
     }
 
@@ -201,11 +187,8 @@
   window.navigator.mozSettings = {
     createLock: createLock,
     addObserver: addObserver,
-    removeObserver: removeObserver
-  };
-
-  Object.defineProperty(window.navigator.mozSettings, 'onsettingschange', {
-    set: function(cb) {
+    removeObserver: removeObserver, 
+    set onsettingschange(cb) {
       this._onsettingschange = cb;
       this._onsettingschangeId = this._onsettingschangeId || ++_currentRequestId;
       var commandObject = {
@@ -221,9 +204,9 @@
       };
       navConnPromise.then(navConnHelper => navConnHelper.sendObject(commandObject));
     }
-  });
+  };
 
-  var navConnPromise = new NavConnectHelper();
+  var navConnPromise = new NavConnectHelper(SETTINGS_SERVICE);
 
   navConnPromise.then(function(){}, e => {
     debug('Got an exception while connecting ' + e);
@@ -232,110 +215,5 @@
     window.navigator.mozSettings.removeObserver = null;
     window.navigator.mozSettings = null;
   });
-
-  ////////////////////////////////////////////////////////////////////////////////
-  // Can move this to a separate file once we have another use case for it...
-  ////////////////////////////////////////////////////////////////////////////////
-  function NavConnectHelper(errorHandler) {
-
-    return new Promise((resolve, reject) => {
-      // navigator.connect port with the settings service, when the connection is established.
-      var _port = null;
-
-      var _messageHandlers = {};
-
-      var _getHandler = function(evt) {
-        return evt && evt.data && _messageHandlers[evt.data.id] &&
-          typeof _messageHandlers[evt.data.id] == 'function' &&
-          _messageHandlers[evt.data.id];
-      };
-
-      navigator.connect(SETTINGS_SERVICE).then(port => {
-        debug('Successfuly established connection to ' + SETTINGS_SERVICE);
-        _port = port;
-        port.onmessage = function (evt) {
-          var handler = _getHandler(evt);
-          if (!handler) {
-            debug('Huh? Got an message with ' + JSON.stringify(evt.data) +
-                  ' that I don\'t know what to do with. Discarding!');
-            return;
-          }
-          handler(evt.data);
-        };
-
-        var realHandler = {
-          // aObject MUSTt implement a serialize method, and the serialize
-          // method MUST return an object with the following structure:
-          //  {
-          //    id: A numeric identifier for this operation
-          //    data: Some extra data that the server will need
-          //    processAnswer: a function that will process the answer for this message
-          // }
-          sendObject: function(aObject) {
-            var serialized = aObject.serialize();
-            _messageHandlers[serialized.id] = serialized.processAnswer;
-            _port.postMessage({id: serialized.id, data: serialized.data});
-          }
-        };
-
-        resolve(realHandler);
-      }).catch(error => reject(error));
-    });
-  }
-
-
-
-  // This should probably be on a common part...
-  // Implements something like
-  // http://mxr.mozilla.org/mozilla-central/source/dom/base/nsIDOMDOMRequest.idl
-  // Well, *expletive removed* me sideways, now DOMRequests are promises also!
-  function FakeDOMRequest(extraData) {
-    var _result = null;
-    var _error = null;
-    var self = this;
-    var _fired = false;
-    var _resolve, _reject;
-    var internalPromise = new Promise((resolve, reject) => {
-      _resolve = resolve;
-      _reject = reject;
-    });
-
-    this.then = function (cbresolve, cbreject) {
-      return internalPromise.then(cbresolve, cbreject);
-    };
-
-    Object.defineProperty(this, 'result', {
-      get: function() {
-        return _result;
-      }
-    });
-
-    Object.defineProperty(this, 'error', {
-      get: function() {
-        return _error;
-      }
-    });
-
-    this._fireSuccess = function(result) {
-      if (!_fired) {
-        _result = result;
-        _fired = true;
-        _resolve(result);
-        this.onsuccess &&
-          typeof this.onsuccess === 'function' && this.onsuccess();
-      }
-    };
-
-    this._fireError = function(error) {
-      if (!_fired) {
-        _error = error;
-        _fired = true;
-        _reject(error);
-        this.onerror
-          && typeof this.onerror === 'function' && this.onerror(error);
-      }
-    };
-  }
-
 
 })(window);
