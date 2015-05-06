@@ -1,0 +1,17 @@
+{
+  "name": "PF Tests",
+  "description": "Tests Client Services",
+  "launch_path": "/WebAPI_pf/tests/index.html",
+  "type": "certified",
+  "developer": {
+    "name": "The Gaia Team",
+    "url": "https://github.com/mozilla-b2g/gaia"
+  },
+  "icons": {
+    "30": "/swshimclient/style/icons/icon.png",
+    "45": "/swshimclient/style/icons/icon.png",
+    "60": "/swshimclient//style/icons/icon.png",
+    "68": "/swshimclient//style/icons/icon.png"
+  },
+  "orientation": "default"
+}

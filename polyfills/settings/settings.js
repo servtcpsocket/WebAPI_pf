@@ -41,6 +41,11 @@
 
 (function(window) {
 
+  'use strict';
+
+  var NavConnectHelper = window.NavConnectHelper;
+  var FakeDOMRequest = window.FakeDOMRequest;
+
   function debug(text) {
     console.log('*-*-*- Settings PF: ' + text);
   }

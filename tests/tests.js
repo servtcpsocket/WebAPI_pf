@@ -21,12 +21,11 @@
 
   window.addEventListener('load', function () {
     // Hopefully this will be false at some point in life...
-    var loadNavConnectPolyfill = !!navigator.connect;
+    var loadNavConnectPolyfill = !navigator.connect;
     var allLoaded;
     if (loadNavConnectPolyfill) {
       allLoaded = LazyLoader.
-                    load(['https://raw.githubusercontent.com/mcjimenez/' +
-                          'nav_connect/usemessagechannel/client/' +
+                    load(['/WebAPI_pf/polyfills/nav_connect/' +
                           'navigator_connect.js']);
     } else {
       allLoaded = Promise.resolve();
@@ -35,7 +34,7 @@
       var settings = document.querySelector('#settings');
       var tcpsocket = document.querySelector('#tcpsocket');
       settings.addEventListener('click', runTest.bind(undefined, 'settings'));
-      tcpsocket.addEventListener('click', runTest.bind(undefined, tcpsocket'));
+      tcpsocket.addEventListener('click', runTest.bind(undefined, 'tcpsocket'));
     });
   });
 })(window);

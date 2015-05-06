@@ -1,5 +1,5 @@
 (function(window) {
-  function install() {
+  function installServices() {
     var origin = document.location.origin;
     // Could get this from the href but not really worth the hassle
     var relPath = '/WebAPI_pf/services/';
@@ -8,20 +8,30 @@
       'settings',
       'fm'
     ];
-    services.forEach(service => {
-      navigator.mozApps.install(origin + relPath + service + '/manifest.webapp');
-    });
+    function installApp(i) {
+      navigator.mozApps.install(origin + relPath + services[i] +
+                                '/manifest.webapp').
+        then(() => {
+          if (++i < services.length) {
+            installApp(i);
+          }
+        });
+    }
+    installApp(0);
   }
 
-  function tests() {
-    window.open("/tests/index.html");
+  function launchTests() {
+    var origin = document.location.origin;
+    // Could get this from the href but not really worth the hassle
+    navigator.mozApps.install(origin + '/WebAPI_pf/tests/manifest.webapp');
   }
 
   // Testing purpose only!!!!
   window.addEventListener('load', function () {
+    console.log('Adding handlers for buttons');
     var install = document.querySelector('#install');
     var tests = document.querySelector('#tests');
-    install.addEventListener('click', install);
-    tests.addEventListener('click', tests);
+    install.addEventListener('click', installServices);
+    tests.addEventListener('click', launchTests);
   });
 })(window);

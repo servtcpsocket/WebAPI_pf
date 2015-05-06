@@ -93,6 +93,23 @@ var LazyLoader = (function() {
       });
     },
 
+    // Loads a set of files that depend one of each other...
+    dependencyLoad: function(files) {
+      var self = this;
+      return new Promise((resolve, reject) => {
+        function loadFile(index) {
+          self.load([files[index]]).then(() => {
+            if (++index === files.length) {
+              resolve();
+            } else {
+              loadFile(index);
+            }
+          });
+        }
+        loadFile(0);
+      });
+    },
+
     load: function(files) {
       var loadsRemaining = files.length, self = this;
       return new Promise((resolve, reject) => {

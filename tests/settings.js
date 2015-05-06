@@ -2,10 +2,11 @@
 (function(window) {
   window.Tests = window.Tests || {};
 
-  var dependencies = ['/WebAPI_pf/polyfills/settings/settings.js'];
+  var dependencies = ['/WebAPI_pf/polyfills/common/webapi_poly_common.js',
+                      '/WebAPI_pf/polyfills/settings/settings.js'];
 
   window.Tests['settings'] =
-    LazyLoader.load(dependencies).then(() => {
+    LazyLoader.dependencyLoad(dependencies).then(() => {
       var log = window.Tests.log.bind(undefined, 'settings');
       return {
         runTest: function() {
