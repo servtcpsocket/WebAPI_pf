@@ -1,0 +1,26 @@
+{
+  "version": "0.1.0",
+  "name": "TCPSocketService",
+  "description": "TCPSocket Service",
+  "type": "certified",
+  "launch_path": "/WebAPI_pf/services/tcpsocket/index.html",
+  "icons": {
+    "16": "/WebAPI_pf/services/common/style/icons/icon.png",
+    "48": "/WebAPI_pf/services/common/style/icons/icon.png",
+    "60": "/WebAPI_pf/services/common/style/icons/icon.png",
+    "128": "/WebAPI_pf/services/common/style/icons/icon.png"
+  },
+  "connections": {
+    "https://tcpsocketservice.gaiamobile.org": {
+      "description": "Test SHIM IAC - TCPSocket",
+      "rules": {}
+    }
+  },
+  "permissions": {
+    "tcpsocket":{}
+  },
+  "installs_allowed_from": [
+    "*"
+  ]
+}
+
