@@ -1,0 +1,26 @@
+{
+  "version": "0.1.0",
+  "name": "SettingsService",
+  "description": "Settings Service",
+  "type": "certified",
+  "launch_path": "/WebAPI_pf/services/settings/index.html",
+  "icons": {
+    "16": "/WebAPI_pf/services/common/style/icons/icon.png",
+    "48": "/WebAPI_pf/services/common/style/icons/icon.png",
+    "60": "/WebAPI_pf/services/common/style/icons/icon.png",
+    "128": "/WebAPI_pf/services/common/style/icons/icon.png"
+  },
+  "connections": {
+    "https://settingsservice.gaiamobile.org": {
+      "description": "Test SHIM IAC - Settings",
+      "rules": {}
+    }
+  },
+  "permissions": {
+    "settings":{ "access": "readwrite" }
+  },
+  "installs_allowed_from": [
+    "*"
+  ]
+}
+
