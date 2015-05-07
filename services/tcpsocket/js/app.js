@@ -13,8 +13,6 @@
 
   var _internalSockId = 0;
   var _sockets = {};
-  var _observers = {};
-
 
   // request structure:
   // {
@@ -36,6 +34,10 @@
           data: evt.data
         }
       });
+    }
+
+    if (_sockets[socketId]) {
+      _sockets[socketId][eventType] = handlerTemplate;
     }
 
   }
@@ -67,9 +69,8 @@
     _operations['on' + event] = setHandler.bind(undefined, event);
   });
 
+  // At this point I could change this (again) and move this to the common part
   var processSWRequest = function(channel, evt) {
-
-
     var remotePortId = evt.data.remotePortId;
     var request = evt.data.remoteData;
     var requestOp = request.data;
@@ -77,31 +78,6 @@
     _operations[requestOp.operation] &&
       _operations[requestOp.operation](evt.data);
 
-    if (requestOp.operation === 'createLock') {
-      _locks[request.id] = _settings.createLock();
-      // Let's assume this works always..
-      channel.postMessage({remotePortId: remotePortId, data: {id: request.id}});
-    } else if (requestOp.operation === 'addObserver') {
-      _observers[request.id] = observerTemplate;
-      _settings.addObserver(requestOp.settingName, _observers[request.id]);
-    } else if (requestOp.operation === 'removeObserver') {
-      _settings.removeObserver(_observers[request.id]);
-    } else if (requestOp.operation === 'onsettingschange') {
-      _settings.onsettingchange = observerTemplate;
-    } else {
-      // It's either a get or a set... or an error but let's assume it isn't :P
-      if (_locks[requestOp.lockId].closed) {
-        _locks[requestOp.lockId] = _settings.createLock();
-      }
-
-      _locks[requestOp.lockId][requestOp.operation](requestOp.settings).
-        then(result => {
-          channel.postMessage({
-            remotePortId: remotePortId,
-            data: { id : request.id, result: result}}
-          );
-      });
-    }
   };
 
 
