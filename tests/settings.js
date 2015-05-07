@@ -28,7 +28,7 @@
               abort('And it\'s a real one... Done!');
 
             // Going to kill two stones with a bird. Or something... :P
-            _mozSett.setObserver('i.am.a.setting', function(e) {
+            _mozSett.addObserver('i.am.a.setting', function(e) {
               log('Got a event for my setting: ' + JSON.stringify(e));
             });
 
