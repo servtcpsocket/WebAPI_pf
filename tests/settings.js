@@ -16,17 +16,19 @@
 
           try {
             log('Starting settings polyfill tests');
-            window.mozSettings || abort('window.mozSettings not defined.');
+            window.navigator.mozSettings || abort('window.navigator.mozSettings not defined.');
 
-            log('window.mozSettings defined!');
-            var lock = window.mozSettings.createLock();
+            var _mozSett = window.navigator.mozSettings;
+
+            log('window.navigator.mozSettings defined!');
+            var lock = _mozSett.createLock();
 
             lock && log('We got a lock!') &&
               (lock.serialize && log('And it\'s fake!')) ||
               abort('And it\'s a real one... Done!');
 
             // Going to kill two stones with a bird. Or something... :P
-            window.mozSettings.setObserver('i.am.a.setting', function(e) {
+            _mozSett.setObserver('i.am.a.setting', function(e) {
               log('Got a event for my setting: ' + JSON.stringify(e));
             });
 
