@@ -11,7 +11,8 @@ function debug(str) {
 }
 
 // ADDED FOR POLYFILL: Import the polyfill script
-this.importScripts('/services/common/polyfill/navigator_connect_sw.js');
+this.
+  importScripts('https://antonioma.github.io/WebAPI_pf/services/commoon/polyfill/navigator_connect_sw.js');
 // END ADDED FOR POLYFILL
 
 this.addEventListener('install', function(evt) {
