@@ -75,6 +75,7 @@ var LazyLoader = (function() {
       return new Promise(function(resolve, reject) {
         var xhr = new XMLHttpRequest();
         xhr.open('GET', file, true);
+        xhr.setRequestHeader("If-Modified-Since", "Sat, 1 Jan 2000 00:00:00 GMT");
         xhr.responseType = 'json';
 
         xhr.onerror = function(error) {

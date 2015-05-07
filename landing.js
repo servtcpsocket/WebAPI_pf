@@ -1,26 +1,25 @@
 (function(window) {
+  var services = [];
+
   function installServices() {
     var origin = document.location.origin;
     // Could get this from the href but not really worth the hassle
     var relPath = '/WebAPI_pf/services/';
-    var services = [
-      'tcpsocket',
-      'settings',
-      'fm'
-    ];
     function installApp(i) {
+      function installNextApp() {
+        if (++i < services.length) {
+          installApp(i);
+        }
+      }
+      console.log('Installing app: ' + i + ': ' + services[i]);
       navigator.mozApps.install(origin + relPath + services[i] +
                                 '/manifest.webapp').
-        then(() => {
-          if (++i < services.length) {
-            installApp(i);
-          }
-        });
+        then(installNextApp).catch(installNextApp);
     }
     installApp(0);
   }
 
-  function launchTests() {
+  function installTests() {
     var origin = document.location.origin;
     // Could get this from the href but not really worth the hassle
     navigator.mozApps.install(origin + '/WebAPI_pf/tests/manifest.webapp');
@@ -28,10 +27,23 @@
 
   // Testing purpose only!!!!
   window.addEventListener('load', function () {
-    console.log('Adding handlers for buttons');
+    console.log('Getting service list.');
+    var serviceListDiv = document.getElementById('service_list');
     var install = document.querySelector('#install');
     var tests = document.querySelector('#tests');
-    install.addEventListener('click', installServices);
-    tests.addEventListener('click', launchTests);
+    tests.addEventListener('click', installTests);
+
+    LazyLoader.getJSON('tests/test_list.json').then(tests => {
+      var serv_list = document.getElementById('service_list');
+      for(var serv in tests) {
+        services.push(serv);
+        window.DOMUtils.addText(serv_list, serv);
+        window.DOMUtils.createElementAt(serv_list, 'br');
+      }
+      install.addEventListener('click', installServices);
+    }).catch(e => {
+      console.error("Cannot get the service list, aborting! " + JSON.stringify(e));
+    });
+
   });
 })(window);
