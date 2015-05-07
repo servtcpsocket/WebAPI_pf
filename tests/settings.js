@@ -32,7 +32,7 @@
               log('Got a event for my setting: ' + JSON.stringify(e));
             });
 
-            lock.set('i.am.a.setting', 'abcd1234').then(() => {
+            lock.set({'i.am.a.setting': 'abcd1234'}).then(() => {
               log('Setting set! (hopefully)');
             });
             lock.get('i.am.a.setting').then(e => {
