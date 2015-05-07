@@ -12,7 +12,7 @@ function debug(str) {
 
 // ADDED FOR POLYFILL: Import the polyfill script
 this.
-  importScripts('/WebAPI_pf/services/commoon/polyfill/navigator_connect_sw.js');
+  importScripts('/WebAPI_pf/services/common/polyfill/navigator_connect_sw.js');
 // END ADDED FOR POLYFILL
 
 this.addEventListener('install', function(evt) {
