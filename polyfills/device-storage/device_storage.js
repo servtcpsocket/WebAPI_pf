@@ -32,6 +32,20 @@
 //    { id: requestId,
 //      data: DeviceStorageChangeEvent }
 
+// For the EventTarget operations
+//  Request: { id: requestId,
+//             data: {
+//             operation: 'addEventListener|removeEventListener|dispatchEvent',
+//             type: eventType (only addEventListener and removeEventListener),
+//             useCapture: true|false (only addEventListener),
+//             event: eventToDispatch (only dispatchEvent)
+//           },
+// Answer: When invoked:
+//    { id: requestId,
+//      data: EventTargetEvent }
+'use strict';
+
+/* globals FakeDOMRequest, NavConnectHelper */
 
 (function(window) {
 
@@ -83,6 +97,8 @@
     _deviceStorageAttributes.forEach(attr => {
       this[attr] = realDeviceStorage[attr];
     });
+
+    FakeEventTarget.call(this, _sendRequest);
 
     this.add = function(file) {
       return _createAndQueueRequest({
@@ -138,15 +154,7 @@
     };
 
     this.enumerate = function(path, options) {
-      var params = [];
-      if (typeof path !== 'undefined') {
-        params.push(path);
-      }
-
-      if (typeof options !== 'undefined') {
-        params.push(options);
-      }
-
+      var params = [path, options];
       return _createAndQueueRequest({
         operation: 'enumerate',
         params: params
@@ -253,6 +261,8 @@
     var _done = false;
     var _files = null;
     var _cursor = 0;
+    var _result = null;
+    var _error = null;
 
     var self = this;
     this.serialize = function() {
@@ -261,7 +271,7 @@
         data: extraData,
         processAnswer: function(answer) {
           if (answer.error) {
-            self._fireError(answer.error);
+            self._fireError(JSON.parse(answer.error));
           } else {
             _files = answer.result;
             self.continue();
@@ -278,6 +288,12 @@
       }
     });
 
+    Object.defineProperty(this, 'result', {
+      get: function() {
+        return _result;
+      }
+    });
+
     this.continue = function() {
       if (!_done) {
         _result = _files[_cursor];
@@ -290,7 +306,8 @@
         _cursor++;
         _done = _cursor > _files.length ? true : false;
         this.onsuccess &&
-          typeof this.onsuccess === 'function' && this.onsuccess();
+          typeof this.onsuccess === 'function' &&
+          this.onsuccess({target: this});
       }
     };
 
@@ -300,6 +317,86 @@
         this.onerror
           && typeof this.onerror === 'function' && this.onerror(error);
       }
+    };
+  }
+
+  function FakeEventTarget(sendRequestMethod) {
+    // _listeners[type][function] => undefined or an Listener object
+    var _listeners = {};
+
+    // And this is something else that might be reusable...
+    function Listener(event, callback, useCapture) {
+      this._id = null;
+      this.type = event;
+      this.data = {
+        operation: 'addEventListener',
+        type: event,
+        useCapture: useCapture
+      };
+      this.serialize = () => {
+        if (!this._id) {
+          this._id = ++_currentRequestId;
+        }
+        return {
+          id: this._id,
+          data: this.data,
+          processAnswer: answer => callback(answer.evt)
+        };
+      };
+    }
+
+    function ListenerRemoval(listener) {
+      this.data = {
+        operation: 'removeEventListener',
+        type: listener.type,
+      }; 
+      this.serialize = () => {
+        return {
+          id: listener._id,
+          data: this.data
+        };
+      };
+    }
+
+    function Dispatcher(event) {
+      this._id = null;
+      this.data = {
+        operation: 'dispatchEvent',
+        event: event
+      };
+      this.serialize = () => {
+        if (!this._id) {
+          this._id = ++_currentRequestId;
+        }
+        return {
+          id: this._id,
+          data: this.data,
+          processAnswer: null
+        };
+      };
+    }
+
+    this.addEventListener = function(type, cb, useCapture) {
+      var listener = new Listener(type, cb, useCapture);
+      if (!_listeners[type]) {
+        _listeners[type] = {};
+      }
+      _listeners[type][cb] = listener;
+      sendRequestMethod(listener);
+    };
+
+    this.removeEventListener = function(type, cb) {
+      if (!_listeners[type][cb]) {
+        return;
+      }
+      var listenerRemoval = new ListenerRemoval(_listeners[type][cb]);
+      sendRequestMethod(listenerRemoval);
+      delete _listeners[type][cb];
+    };
+
+    this.dispatchEvent = function(event) {
+      var dispatcher = new Dispatcher(event);
+      sendRequestMethod(dispatcher);
     };
   }
 
