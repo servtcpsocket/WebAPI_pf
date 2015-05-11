@@ -235,7 +235,10 @@ var removeObserver = function(setting, callback) {
           </section>
           <section>
             <h3>API usage stage</h3>
-            <img src="imgs/Mediated API Requests.png"/>
+            <img src="imgs/Mediated API Request.png"/>
+          </section>
+          <section>
+            <h4>Explanation</h4>
             <ul>
               <li><b>Steps 7-8:</b> A third party app wants to access some API that's available only on FFOS devices. It uses the polyfills (which will in turn use the mediator).</li>
               <li><b>Steps 9-11:</b> The mediator know it's not on a FFOS device, and so it sends the petition to the associated FFOS device (again, how the device is associated with an user is out-of-scope but FxA might be used). The actual petition is sent to the device using push.</li>
