@@ -226,8 +226,10 @@ var removeObserver = function(setting, callback) {
             <p class="fragment roll-in">But it can be offered to desktop remotely!</p>
           </section>
           <section>
-            <h3>Enrollment stage</h3>
+            <h4>Enrollment stage</h4>
             <img src="imgs/Initialization Mediated APIs.png"/>
+          </section>
+          <section>
             <ul>
               <li><b>Steps 1-3:</b> The first time the mediator is run on a device, it can get a push EndPoint and publish it to the server that hosts the mediator (that has a real URL!)</li>
               <li><b>Steps 4-6:</b> When the service is accessed through a desktop, it can get and register a push EndPoint (and link it to the same user that already has a device registered). How the actual link is done is out-of-scope, but Firefox Accounts might be used for this.</li>
