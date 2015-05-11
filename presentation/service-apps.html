@@ -109,19 +109,15 @@
 
         <section>
           <section>
-            <h2>Enter Sandman!</h2>
-            <h2 class="fragment roll-in">Er I mean Services</h2>
-          </section>
-          <section>
-            <h3>I should add a image here</h3>
-            <h4 class="fragment roll-in">But I didn't really had time</h4>
-            <p class ="fragment roll-in">
-              So you're going to have to do with some code
-            </p>
+            <h1>Enter Mediators!</h1>
+            <img src="imgs/Initialization Mediated APIs.png"/>
+            <img src="imgs/Mediated API Request.png"/>
           </section>
           <section>
             <h3>The idea, take 1</h3>
-            <h4 class ="fragment roll-in">Add a new class of system apps: services</h4>
+            <h4 class ="fragment roll-in">Add a new class of system apps: mediators</h4>
+            <img class="fragment roll-in" src="imgs/Basic Mediator.png"/>
+            <p class="fragment roll-in">A mediator is a certified/signed app that has direct access to one or more APIs and exposes a mediated access to that API to unprivileged content.</p>
           </section>
           <section>
             <h3 class ="fragment roll-in">Client code</h3>
@@ -223,6 +219,38 @@ var removeObserver = function(setting, callback) {
           </section>
         </section>
         <section>
+          <section>
+            <h3>The idea, take 2</h3>
+            <h4>Add push</h4>
+            <p class="fragment roll-in">The same service worker/mediator can be installed on a FFOS device and a desktop app.</p>
+            <p class="fragment roll-in">The actual API access will of course be available only on a FFOS device.</p>
+            <p class="fragment roll-in">But it can be offered to desktop remotely!</p>
+            <img class="fragment roll-in" src="imgs/Basic Mediator.png"/>
+            <p class ="fragment roll-in">
+              So you're going to have to do with some code
+            </p>
+          </section>
+          <section>
+            <h3>Enrollment stage</h3>
+            <img src="imgs/Initialization Mediated APIs.png"/>
+            <ul>
+              <li><b>Steps 1-3:</b> The first time the mediator is run on a device, it can get a push EndPoint and publish it to the server that hosts the mediator (that has a real URL!)</li>
+              <li><b>Steps 4-6:</b> When the service is accessed through a desktop, it can get and register a push EndPoint (and link it to the same user that already has a device registered).</li>
+            </ul>
+          </section>
+          <section>
+            <h3>API usage stage</h3>
+            <img src="imgs/Mediated API Requests.png"/>
+            <ul>
+              <li><b>Steps 7-8:</b> A third party app wants to access some API that's available only on FFOS devices. It uses the polyfills (which will in turn use the mediator).</li>
+              <li><b>Steps 9-11:</b> The mediator know it's not on a FFOS device, and so it sends the petition to the associated FFOS device (again, how the device is associated with an user is out-of-scope but FxA might be used). The actual petition is sent to the device using push.</li>
+              <li><b>Steps 12-14:</b> The mediator on the device executes the functionality requested, and sends the data back to the desktop. Since the device doesn't know where the desktop is (or even if it is a desktop at all) it just sends the answer back to the server. </li>
+              <li><b>Steps 15-18:</b> The server passes the answer back to the mediator service worker (using push again) which in turn passes it back to the calling third party application. </li>
+            </ul>
+          </section>
+        </section>
+
+        <section>
          <h3>Enter push</h3>
          <h4 class="fragment roll-in">And the only limit is your imagination!</h4>
          <p>
@@ -240,6 +268,14 @@ var removeObserver = function(setting, callback) {
 				<section>
 					<h2>Write once, run everywhere, do everything FFOS can do!</h2>
           <h3>It doesn't get sexier than that</h3>
+				</section>
+				<section>
+					<h2>References and links</h2>
+          <ol>
+            <li> <b>navigator.connect polyfill</b> <a href="https://github.com/mcjimenez/nav_connect">https://github.com/mcjimenez/nav_connect/tree/usemessagechannel</a>. Requires MessageChannel working on workers (<a href="https://bugzilla.mozilla.org/show_bug.cgi?id=911972">Bug 911972</a>)</li>
+            <li> <b>WebAPIs polyfills (using navigator.connect)</b> <a href="https://github.com/AntonioMA/WebAPI_pf">https://github.com/AntonioMA/WebAPI_pf</a>. Requires either the navigator.connect polyfill or the real navigator.connect. Services require the developer mode to be enabled (to allow hosted certified apps).</li>
+            <li> <b>Gaia radio app using Polyfills</b> <a href="https://github.com/telefonicaid/gaia/tree/hosted-web/apps/fm">https://github.com/telefonicaid/gaia/tree/hosted-web/apps/fm</a>. If using the polyfill, requires the MessageChannel patch, and developer_mode enabled </li>
+          </ol>
 				</section>
 			</div>
 
