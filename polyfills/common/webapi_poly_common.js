@@ -91,7 +91,7 @@
         data: extraData,
         processAnswer: function(answer) {
           if (answer.error) {
-            self._fireError(answer.error);
+            self._fireError(JSON.parse(answer.error));
           } else {
             self._fireSuccess(answer.result);
           }
@@ -104,6 +104,7 @@
     };
 
     Object.defineProperty(this, 'result', {
+      configurable: true,
       get: function() {
         return _result;
       }
