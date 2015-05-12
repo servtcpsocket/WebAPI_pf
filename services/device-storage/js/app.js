@@ -45,7 +45,7 @@
         data: {
           id: request.id,
           data: {
-            event: evt
+            event: window.ServiceHelper.cloneObject(evt)
           }
         }
       });
@@ -103,7 +103,10 @@
         cursor.onerror = () => {
           channel.postMessage({
             remotePortId: remotePortId,
-            data: { id : request.id, error: JSON.stringify(cursor.error)}}
+            data: {
+              id : request.id,
+              error: window.ServiceHelper.cloneObject(cursor.error)
+            }}
           );
         };
     } else {
@@ -121,7 +124,10 @@
       }).catch(error => {
         channel.postMessage({
           remotePortId: remotePortId,
-          data: { id : request.id, error: JSON.stringify(error)}}
+          data: {
+            id : request.id,
+            error: window.ServiceHelper.cloneObject(error)
+          }}
         );
       });
     }

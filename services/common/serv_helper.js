@@ -40,6 +40,21 @@
     });
   };
 
+  var cloneObject = function(obj) {
+    var cloned = {};
+    for (var key in obj) {
+      if (typeof obj[key] === 'object') {
+        cloned[key] = _cloneObject(obj[key]);
+        continue;
+      }
+
+      if (typeof obj[key] !== 'function' || obj[key] === null) {
+          cloned[key] = obj[key];
+      }
+    }
+    return cloned;
+  };
+
 if ('serviceWorker' in navigator) {
   window.ServiceHelper = {
     register: function(processSWRequest) {
@@ -51,7 +66,8 @@ if ('serviceWorker' in navigator) {
         sw.active && sw.active.postMessage({}, [mc.port2]);
       });
     },
-    unregister: unregister
+    unregister: unregister,
+    cloneObject: cloneObject
   };
 } else {
   debug('APP navigator does not have ServiceWorker');
