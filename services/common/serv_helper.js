@@ -40,6 +40,7 @@
     });
   };
 
+  // Circular objects will cause this to hang
   var cloneObject = function(obj) {
     var cloned = {};
     for (var key in obj) {
