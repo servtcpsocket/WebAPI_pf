@@ -45,7 +45,7 @@
 //      event: EventTargetEvent }
 'use strict';
 
-/* globals FakeDOMRequest, NavConnectHelper */
+/* globals FakeDOMRequest, FakeDOMCursorRequest, NavConnectHelper */
 
 (function(window) {
 
@@ -252,73 +252,6 @@
     window.navigator.getDeviceStorage = realGetDeviceStorage;
     window.navigator.getDeviceStorages = realGetDeviceStorages;
   });
-
-  // Implements something like
-  // http://mxr.mozilla.org/mozilla-central/source/dom/base/nsIDOMDOMCursor.idl
-  // Well, *expletive removed* me sideways, now DOMRequests are promises also!
-  function FakeDOMCursorRequest(reqId, extraData) {
-    FakeDOMRequest.call(this, reqId, extraData);
-    var _done = false;
-    var _files = null;
-    var _cursor = 0;
-    var _result = null;
-    var _error = null;
-
-    var self = this;
-    this.serialize = function() {
-      return {
-        id: reqId,
-        data: extraData,
-        processAnswer: function(answer) {
-          if (answer.error) {
-            self._fireError(answer.error);
-          } else {
-            _files = answer.result;
-            self.continue();
-          }
-        }
-      };
-    };
-
-    this.then = undefined;
-
-    Object.defineProperty(this, 'done', {
-      get: function() {
-        return _done;
-      }
-    });
-
-    Object.defineProperty(this, 'result', {
-      get: function() {
-        return _result;
-      }
-    });
-
-    this.continue = function() {
-      if (!_done) {
-        _result = _files[_cursor];
-        this._fireSuccess();
-      }
-    };
-
-    this._fireSuccess = function() {
-      if (!_done) {
-        _cursor++;
-        _done = _cursor > _files.length ? true : false;
-        this.onsuccess &&
-          typeof this.onsuccess === 'function' &&
-          this.onsuccess({target: this});
-      }
-    };
-
-    this._fireError = function(error) {
-      if (!_done) {
-        _error = error;
-        this.onerror
-          && typeof this.onerror === 'function' && this.onerror(error);
-      }
-    };
-  }
 
   function FakeEventTarget(sendRequestMethod) {
     // _listeners[type][function] => undefined or an Listener object
