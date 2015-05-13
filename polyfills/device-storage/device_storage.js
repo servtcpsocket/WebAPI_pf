@@ -42,7 +42,7 @@
 //           },
 // Answer: When invoked:
 //    { id: requestId,
-//      data: EventTargetEvent }
+//      event: EventTargetEvent }
 'use strict';
 
 /* globals FakeDOMRequest, NavConnectHelper */
@@ -271,7 +271,7 @@
         data: extraData,
         processAnswer: function(answer) {
           if (answer.error) {
-            self._fireError(JSON.parse(answer.error));
+            self._fireError(answer.error);
           } else {
             _files = answer.result;
             self.continue();
@@ -340,7 +340,7 @@
         return {
           id: this._id,
           data: this.data,
-          processAnswer: answer => callback(answer.evt)
+          processAnswer: answer => callback(answer.event)
         };
       };
     }
