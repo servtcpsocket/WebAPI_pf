@@ -81,6 +81,8 @@
 
 (function(window) {
 
+  'use strict';
+
   function debug(text) {
     console.log('*-*-*- TCPSocket PF: ' + text);
   }
@@ -143,7 +145,7 @@
         get: function() {
           return _internalProps[key];
         }
-      });
+      })
     );
 
     var _handlers = {
@@ -154,6 +156,14 @@
       onclose: null
     };
 
+    function _sendAPICall(commandObject) {
+      Promise.all([navConnPromise, _sock]).then(values => {
+        // Going to send the socketId always in this place...
+        commandObject.data.socketId = values[1];
+        values[0].sendObject(commandObject);
+      });
+    }
+
     Object.keys(_handlers).forEach(handler =>
       Object.defineProperty(this, handler, {
         get: function() {
@@ -161,33 +171,28 @@
         },
         set: function(cb) {
           _handlers[handler] = cb;
-          Promise.all([navConnPromise, _sock]).then(values => {
-            var commandObject = {
-              serialize: function() {
-                return {
-                  id: ++_currentRequestId,
-                  data: {
-                    operation: handler,
-                    socketId: values[1]
-                  },
-                  processAnswer: answer => cb(answer.data)
-                };
-              }
-            };
-            values[0].sendObject(commandObject);
+          _sendAPICall({
+            serialize: function() {
+              return {
+                id: ++_currentRequestId,
+		data: {
+		  operation: handler
+                },
+                processAnswer: answer => cb(answer.event)
+              };
+            }
           });
         }
-      });
+      })
     );
 
     this.serialize = function() {
+      var self= this;
       return {
         id: _internalId,
         data: {
           operation: 'open',
-          host: host,
-          port: port,
-          options: options
+          params: [host, port, options]
         },
         processAnswer: function(answer) {
           // This function will be invoked in two cases... when the socket is
@@ -195,8 +200,10 @@
           if (_sockId === null) {
             if (!answer.error) {
               _resolve(answer.socketId);
+              self.readyState = 'open';
             } else {
               var permaFail = 'Error creating socket: ' + answer.error;
+              this.readyState = 'closed';
               _reject(permaFail);
             }
             return;
@@ -209,6 +216,39 @@
         }
       };
     };
+
+//  void upgradeToSecure();
+//  void suspend();
+//  void resume();
+//  void close();
+
+    //  boolean send(in jsval data, [optional] in unsigned long byteOffset,
+    //              [optional] in unsigned long byteLength);
+    // Synchronous API agh!
+    this.send = function(dataToSend, byteOffset, byteLength) {
+      // Hmm... can uint8 be sent?
+      if (this.readyState !== 'open') {
+        return false;
+      }
+
+      var commandObject = {
+        serialize: function() {
+          return {
+            id: ++_currentRequestId,
+            data: {
+              operation: 'send',
+              params: [dataToSend, byteOffset, byteLength]
+            },
+            processAnswer: () =>
+              debug("Got an answer for send! We really shouldn't")
+          };
+        }
+      };
+
+      _sendAPICall(commandObject);
+      return true;
+    };
+
   }
 
   // For the time being, only client sockets!

@@ -20,63 +20,82 @@
   //    remoteData: dataReceivedFromClient
   //
   // }
+  // Answer structure:
+  // {
+  //   remotePortId: portToSWClientBridge,
+  //   data: {
+  //      id: request.id
+  //      rest: depends on the response
+  //   }
+  // }
+
+  // Answers a request through a channel, setting the response field (field)
+  // with the data passed. Note that since this is more or less standard, this
+  // could/should be moved to a common file. Just saying, me.
+  function answerWith(channel, request, field, data) {
+    // This is needed for the answer to be processed automatically by the
+    //  helper.
+    var dataField = {
+      id: request.remoteData.id
+    };
+    dataField[field] = data;
+
+    channel.postMessage({
+      remotePortId: request.remotePortId,
+      data: dataField
+    });
+  }
 
 
   function setHandler(eventType, channel, request) {
     var socketId = request.remoteData.socketId;
-    var remotePortId = request.remotePortId;
 
     function handlerTemplate(evt) {
-      channel.postMessage({
-        remotePortId: remotePortId,
-        data: {
-          id: request.id,
-          data: evt.data
-        }
-      });
+      answerWith(channel, request, 'event',
+		 window.ServiceHelper.cloneObject(evt));
     }
 
     if (_sockets[socketId]) {
       _sockets[socketId][eventType] = handlerTemplate;
     }
-
   }
 
   var _operations = {
     open: function(channel, request) {
       var funcData = request.remoteData.data;
       _sockets[++_internalSockId] =
-        _tcpSocket.open(funcData.host, funcData.port, funcData.options);
+        _tcpSocket.open(...funcData.params);
       // And let's assume everything goes well
-      channel.postMessage({
-        remotePortId: request.remotePortId,
-        data: {
-          id: request.remoteData.id,
-          socketId: _internalSockId
-        }
-      });
+      answerWith(channel, request, 'socketId', _internalSockId);
     },
+
     send: function(channel, request) {
+      var funcData = request.remoteData.data;
+      _sockets[funcData.socketId].send(...funcData.params);
+      // We're not going answer anything here
     },
+
     resume: function(channel, request) {
     },
+
     close: function(channel, request) {
     },
+
     upgradeToSecure: function(channel, request) {
     }
+
   };
+
   ['open', 'drain', 'data', 'error', 'close'].forEach(event => {
     _operations['on' + event] = setHandler.bind(undefined, event);
   });
 
   // At this point I could change this (again) and move this to the common part
   var processSWRequest = function(channel, evt) {
-    var remotePortId = evt.data.remotePortId;
-    var request = evt.data.remoteData;
-    var requestOp = request.data;
+    var operation = evt.data.remoteData.data.operation;
 
-    _operations[requestOp.operation] &&
-      _operations[requestOp.operation](evt.data);
+    _operations[operation] &&
+      _operations[operation](channel, evt.data);
 
   };
 
