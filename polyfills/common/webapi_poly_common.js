@@ -93,7 +93,9 @@
         data: extraData,
         processAnswer: function(answer) {
           if (answer.error) {
-            self._fireError(answer.error);
+            self._fireError((typeof answer.error === 'object') ?
+                             answer.error :
+                             JSON.parse(answer.error));
           } else {
             self._fireSuccess(answer.result);
           }
