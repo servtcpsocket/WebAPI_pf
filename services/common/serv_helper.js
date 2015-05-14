@@ -41,10 +41,15 @@
   };
 
   // Circular objects will cause this to hang
-  var cloneObject = function(obj) {
+  var cloneObject = function(obj, recursive) {
     var cloned = {};
     for (var key in obj) {
       if (typeof obj[key] === 'object') {
+        if (!recursive) {
+          cloned[key] = obj[key];
+          continue;
+        }
+
         cloned[key] = cloneObject(obj[key]);
         continue;
       }

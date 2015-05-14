@@ -21,21 +21,6 @@
     var request = evt.data.remoteData;
     var requestOp = request.data;
 
-    function _cloneContact(mozContact) {
-      var cloned = {};
-      for (var key in mozContact) {
-        if (typeof mozContact[key] === 'object') {
-          cloned[key] = mozContact[key];
-          continue;
-        }
-
-        if (typeof mozContact[key] !== 'function') {
-          cloned[key] = mozContact[key];
-        }
-      }
-      return cloned;
-    }
-
     function _updateContact(realObj, fakeObj) {
       for (var key in realObj) {
         if (typeof realObj[key] === 'function') {
@@ -65,7 +50,10 @@
     function sendError(error) {
       channel.postMessage({
         remotePortId: remotePortId,
-        data: { id : request.id, error: error.name }}
+        data: {
+          id : request.id,
+          error: window.ServiceHelper.cloneObject(error)
+        }}
       );
     }
 
@@ -92,7 +80,7 @@
     if (requestOp.operation === 'oncontactchange') {
       _contacts.oncontactchange = listenerTemplate;
     } else if (requestOp.operation === 'getAll') {
-      var cursor = _contacts.getAll(..requestOp.params);
+      var cursor = _contacts.getAll(...requestOp.params);
       var contacts = [];
 
       cursor.onsuccess = () => {
@@ -101,7 +89,7 @@
         // reached. However, it seems that the flag is only is enabled in 
         // the next iteration so we've always got an undefined file
         if (typeof contact !== 'undefined') {
-          contacts.push(_cloneContact(contact));
+          contacts.push(window.ServiceHelper.cloneObject(contact));
         }
 
         if (!cursor.done) {
