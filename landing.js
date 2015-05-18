@@ -39,7 +39,7 @@
       var serv_list = document.getElementById('service_list');
       for(var serv in tests) {
         services.push(serv);
-        window.DOMUtils.addText(serv_list, JSON.stringify(tests[serv]));
+        window.DOMUtils.addText(serv_list, "Service: " + serv + ". " + JSON.stringify(tests[serv]));
         window.DOMUtils.createElementAt(serv_list, 'br');
       }
       install.addEventListener('click', installServices);
