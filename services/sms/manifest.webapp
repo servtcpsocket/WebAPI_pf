@@ -1,0 +1,28 @@
+{
+  "version": "0.1.0",
+  "name": "SMSService",
+  "description": "SMS Service",
+  "type": "certified",
+  "launch_path": "/WebAPI_pf/services/sms/index.html",
+  "icons": {
+    "128": "/WebAPI_pf/services/common/style/icons/icon.png",
+    "512": "/WebAPI_pf/services/common/style/icons/icon.png"
+  },
+  "developer": {
+    "name": "OWD Team",
+    "url": "https://www.openwebdevice.com"
+  },
+  "connections": {
+    "https://smsservice.gaiamobile.org": {
+      "description": "Test polyfill service - SMS",
+      "rules": {}
+    }
+  },
+  "permissions": {
+    "sms":{}
+  },
+  "installs_allowed_from": [
+    "*"
+  ]
+}
+

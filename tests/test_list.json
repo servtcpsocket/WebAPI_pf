@@ -1,6 +1,8 @@
 {
-  "settings": {},
-  "tcpsocket": {},
-  "fm": {}
+  "settings": {"origin": "https://servsettings.github.io"},
+  "tcpsocket": {"origin": "https://servtcpsocket.github.io"},
+  "fm": {"origin": "https://servfm.github.io"},
+  "sms": {"origin": "https://servsms.github.io"},
+  "contacts": {"origin": "https://servcontacts.github.io"}
 }
 

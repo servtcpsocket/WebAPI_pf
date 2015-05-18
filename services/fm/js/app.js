@@ -66,7 +66,7 @@
             remotePortId: remotePortId,
             data: {
               id: request.id,
-              error: error
+              error: window.ServiceHelper.cloneObject(error)
             }
           });
         });
