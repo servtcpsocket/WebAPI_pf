@@ -1,0 +1,26 @@
+{
+  "version": "0.1.0",
+  "name": "ContactsService",
+  "description": "Contacts Service",
+  "type": "certified",
+  "launch_path": "/WebAPI_pf/services/contacts/index.html",
+  "icons": {
+    "16": "/WebAPI_pf/services/common/style/icons/icon.png",
+    "48": "/WebAPI_pf/services/common/style/icons/icon.png",
+    "60": "/WebAPI_pf/services/common/style/icons/icon.png",
+    "128": "/WebAPI_pf/services/common/style/icons/icon.png"
+  },
+  "connections": {
+    "https://contactsservice.gaiamobile.org": {
+      "description": "Test SHIM IAC - Contacts",
+      "rules": {}
+    }
+  },
+  "permissions": {
+    "contacts": { "access": "readwrite" }
+  },
+  "installs_allowed_from": [
+    "*"
+  ]
+}
+
