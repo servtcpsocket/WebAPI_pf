@@ -95,20 +95,19 @@
   // Wishful thinking at the moment...
   const TCPSOCKET_SERVICE = 'https://tcpsocket.gaiamobile.org';
 
-  // It's nice being monothread...
-  var _currentRequestId = 1;
-
   // TCPSocket polyfill..
-  function FakeTCPSocket(host, port, options) {
+  function FakeTCPSocket(reqId, extraData) {
+    // extraData will hold host, port, options
     // Crude error checking!
-    if (!host) {
+    if (!extraData.host) {
       throw "INVALID_HOST";
     }
-    if (!port) {
+    if (!extraData.port) {
       throw "INVALID_PORT";
     }
-
-    var _internalId = ++_currentRequestId;
+    var host = extraData.host;
+    var port = extraData.port;
+    var options = extraData.options;
 
     var _resolve, _reject;
     var _sock = new Promise((resolve, reject) => {
@@ -175,8 +174,8 @@
             serialize: function() {
               return {
                 id: ++_currentRequestId,
-		data: {
-		  operation: handler
+		            data: {
+		              operation: handler
                 },
                 processAnswer: answer => cb(answer.event)
               };
@@ -189,7 +188,7 @@
     this.serialize = function() {
       var self= this;
       return {
-        id: _internalId,
+        id: reqId,
         data: {
           operation: 'open',
           params: [host, port, options]
@@ -217,6 +216,32 @@
       };
     };
 
+    var _ops = {
+      upgradeToSecure: {
+        numParams: 0,
+        returnValue: Void
+      },
+      suspend: {
+        numParams: 0,
+        returnValue: Void
+      },
+      resume: {
+        numParams: 0,
+        returnValue: Void
+      },
+      close: {
+        numParams: 0,
+        returnValue: Void
+      },
+      send: {
+        numParams: 3,
+        returnValue: Void
+      },
+    };
+
+
+    
+
 //  void upgradeToSecure();
 //  void suspend();
 //  void resume();
@@ -230,6 +255,8 @@
       if (this.readyState !== 'open') {
         return false;
       }
+
+      
 
       var commandObject = {
         serialize: function() {

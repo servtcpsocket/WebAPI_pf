@@ -19,16 +19,6 @@
 
   var SMS_SERVICE = 'https://smsservice.gaiamobile.org';
 
-  var _currentRequestId = 1;
-
-  // Note to self: This is used on almost all the polyfills... move to common?
-  function _createAndQueueRequest(data, constructor) {
-    var request = new constructor(++_currentRequestId, data);
-    navConnHelper.then(navConn => navConn.sendObject(request));
-    return request;
-  }
-
-
   var _smsOps = {
     /**
      * Send SMS.
@@ -135,24 +125,10 @@
 
   };
 
-  function methodCall(methodName, numParams, returnValue) {
-    var params = [];
-    // It's not recommended calling splice on arguments apparently.
-    // Also, first three arguments are explicit
-    for(var i = 3; i < numParams + 3; i++) {
-      params.push(arguments[i]);
-    }
-    debug('Called ' + methodName + ' with ' + JSON.stringify(params));
-      return _createAndQueueRequest({
-        operation: methodName,
-        params: params
-      }, returnValue);
-  }
-
   for(var _op  in _smsOps) {
     fakeMozMobileMessage[_op] =
-      methodCall.bind(fakeMozMobileMessage, _op, _smsOps[_op].numParams,
-                     _smsOps[_op].returnValue);
+      navConnHelper.methodCall.bind(navConnHelper, _op, _smsOps[_op].numParams,
+                                    _smsOps[_op].returnValue);
   }
 
   var _handlers = {
@@ -172,20 +148,8 @@
       },
       set: function(cb) {
         _handlers[handler] = cb;
-        navConnHelper.then(navConn => {
-          var commandObject = {
-            serialize: function() {
-              return {
-                id: ++_currentRequestId,
-                data: {
-                  operation: handler
-                },
-                processAnswer: answer => cb(answer.data.event)
-              };
-            }
-          };
-          navConn.sendObject(commandObject);
-        });
+        navConnHelper.createAndQueueRequest({handler: handler, cb: cb},
+                                            HandlerSetRequest);
       }
     })
   );

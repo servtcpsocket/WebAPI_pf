@@ -2,6 +2,7 @@
 
   'use strict';
 
+
   // Helper for the common tasks for navigator.connect. This is not strictly
   // needed, but helps to do the things always the same way. That way being:
   // * The client app creates one (or as many as it needs) NavConnectHelper
@@ -24,7 +25,10 @@
       console.log('*-*-* NavConnectHelper: ' + text);
     }
 
-    return new Promise((resolve, reject) => {
+    // It actually makesmore sense having this here...
+    var _currentRequestId = 1;
+
+    var retValue = new Promise((resolve, reject) => {
       // navigator.connect port with the settings service, when the connection
       // is established.
       var _port = null;
@@ -69,6 +73,29 @@
         resolve(realHandler);
       }).catch(error => reject(error));
     });
+
+    retValue.createAndQueueRequest = function(data, constructor) {
+      var request = new constructor(++_currentRequestId, data);
+      this.then(navConn => navConn.sendObject(request));
+      return request;
+    }.bind(retValue);
+
+    retValue.methodCall = function(methodName, numParams, returnValue) {
+      var params = [];
+      // It's not recommended calling splice on arguments apparently.
+      // Also, first three arguments are explicit
+      for(var i = 3; i < numParams + 3; i++) {
+        params.push(arguments[i]);
+      }
+      debug('Called ' + methodName + ' with ' + JSON.stringify(params));
+      return this.createAndQueueRequest({
+        operation: methodName,
+        params: params
+      }, returnValue);
+    }.bind(retValue);
+
+    return retValue;
+
   }
 
   // This should probably be on a common part...
@@ -163,7 +190,6 @@
         id: reqId,
         data: extraData,
         processAnswer: function(answer) {
-console.log('processAnswer --> answer:' + JSON.stringify(answer));
           if (answer.error) {
             self._fireError(answer.error);
           } else {
@@ -208,6 +234,21 @@ console.log('processAnswer --> answer:' + JSON.stringify(answer));
     };
   }
 
+  function HandlerSetRequest(reqId, extraData) {
+    return {
+      serialize: function() {
+        return {
+          id: reqId,
+          data: {
+            operation: extraData.handler
+          },
+          processAnswer: answer => extraData.cb(answer.data.event)
+        };
+      }
+    };
+  }
+
+  window.HandlerSetRequest = HandlerSetRequest;
   window.NavConnectHelper = NavConnectHelper;
   window.FakeDOMRequest = FakeDOMRequest;
   window.FakeDOMCursorRequest = FakeDOMCursorRequest;
