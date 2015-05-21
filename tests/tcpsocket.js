@@ -2,18 +2,18 @@
 (function(window) {
   window.Tests = window.Tests || {};
 
-  window.Tests['settings'] = {
+  window.Tests['tcpsocket'] = {
     dependencies: [
       '/WebAPI_pf/polyfills/common/webapi_poly_common.js',
-      '/WebAPI_pf/polyfills/settings/settings.js'
+      '/WebAPI_pf/polyfills/tcpsocket/tcpsocket.js'
     ],
 
     runTest: function() {
-      var log = window.Tests.log.bind(undefined, 'settings');
+      var log = window.Tests.log.bind(undefined, 'tcpsocket');
       var abort = window.Tests.abort;
 
       try {
-        log('Starting settings polyfill tests');
+        log('Starting tcpsocket polyfill tests');
         window.navigator.mozTCPSocket ||
           abort('window.navigator.mozTCPSocket not defined.');
 
