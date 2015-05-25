@@ -34,7 +34,7 @@
   // could/should be moved to a common file. Just saying, me.
   function answerWith(channel, request, field, data) {
     // This is needed for the answer to be processed automatically by the
-    //  helper.
+    // helper.
     var dataField = {
       id: request.remoteData.id
     };
@@ -46,46 +46,74 @@
     });
   }
 
+  // There's a good chance of events going out in this process before the
+  // calling process has time to set the event handlers. So we're going to do a
+  // dirty trick here.
+  var _eventQueue = {};
+  function queueEvent(socketId, eventType, event) {
+    debug('Queueing unset event ' + eventType + ' for ' + socketId);
+    _eventQueue[socketId] = _eventQueue[socketId] || {};
+    _eventQueue[socketId][eventType] = _eventQueue[socketId][eventType] || [];
+    _eventQueue[socketId][eventType].push(event);
+  }
+
 
   function setHandler(eventType, channel, request) {
-    var socketId = request.remoteData.socketId;
+    var socketId = request.remoteData.data.socketId;
 
     function handlerTemplate(evt) {
-      answerWith(channel, request, 'data', evt.data);
+      // evt is a TCPSocketEvent which has:
+      //   * data
+      //   * target
+      //   * type
+      //   * then => undefined
+      var evtCopy = {
+        data: evt.data,
+        target: socketId,
+        type: evt.type,
+        then: undefined
+      };
+      answerWith(channel, request, 'event', evtCopy);
     }
 
     if (_sockets[socketId]) {
       _sockets[socketId][eventType] = handlerTemplate;
+      if (_eventQueue[socketId] && _eventQueue[socketId][eventType]) {
+        var event;
+        while (event = _eventQueue[socketId][eventType].shift()) {
+          handlerTemplate(event);
+        }
+      }
     }
   }
+
+  var _eventTypes = ['onopen', 'ondrain', 'ondata', 'onerror', 'onclose'];
 
   var _operations = {
     open: function(channel, request) {
       var funcData = request.remoteData.data;
       _sockets[++_internalSockId] =
         _tcpSocket.open(...funcData.params);
+      _eventTypes.forEach(eventType => {
+        _sockets[_internalSockId][eventType] =
+          queueEvent.bind(this,
+                          _internalSockId, eventType);
+      });
       // And let's assume everything goes well
       answerWith(channel, request, 'socketId', _internalSockId);
-    },
-
-    send: function(channel, request) {
-      var funcData = request.remoteData.data;
-      _sockets[funcData.socketId].send(...funcData.params);
-    },
-
-    resume: function(channel, request) {
-    },
-
-    close: function(channel, request) {
-    },
-
-    upgradeToSecure: function(channel, request) {
     }
-
   };
 
-  ['open', 'drain', 'data', 'error', 'close'].forEach(event => {
-    _operations['on' + event] = setHandler.bind(undefined, event);
+  _eventTypes.forEach(event => {
+    _operations[event] = setHandler.bind(undefined, event);
+  });
+
+  ['send', 'resume', 'close', 'upgradeToSecure'].forEach(op => {
+    _operations[op] = function(channel, request) {
+      var funcData = request.remoteData.data;
+      _sockets[funcData.socketId][op](...funcData.params);
+      // We're not going answer anything here
+    };
   });
 
   // At this point I could change this (again) and move this to the common part

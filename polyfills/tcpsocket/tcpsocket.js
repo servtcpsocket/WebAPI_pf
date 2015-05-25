@@ -81,32 +81,58 @@
 
 (function(window) {
 
+  'use strict';
+
   function debug(text) {
     console.log('*-*-*- TCPSocket PF: ' + text);
   }
 
-  if (window.navigator.mozTCPSocket && window.navigator.mozTCPSocket.open) {
+  if (false && window.navigator.mozTCPSocket &&
+      window.navigator.mozTCPSocket.open) {
     // Hmm it's already available... so let's just use it and be done with it
     return;
   }
 
   // Wishful thinking at the moment...
-  const TCPSOCKET_SERVICE = 'https://tcpsocket.gaiamobile.org';
+  const TCPSOCKET_SERVICE = 'https://tcpsocketservice.gaiamobile.org';
 
-  // It's nice being monothread...
-  var _currentRequestId = 1;
+  function VoidRequest(reqId, extraData) {
+    this.serialize = function() {
+      return {
+        id: reqId,
+        data: extraData,
+        processAnswer: answer => debug('Got an invalid answer for: ' + reqId)
+      };
+    };
+  }
+
+  function HandlerSetRequest(reqId, extraData) {
+    this.serialize = function() {
+      return {
+        id: reqId,
+        data: {
+          operation: extraData.handler,
+          socketId: extraData.socketId
+        },
+        processAnswer: answer => extraData.cb(answer.event)
+      };
+    };
+  }
 
   // TCPSocket polyfill..
-  function FakeTCPSocket(host, port, options) {
+  function FakeTCPSocket(reqId, extraData) {
+    // extraData will hold host, port, options
     // Crude error checking!
-    if (!host) {
+    if (!extraData.host) {
       throw "INVALID_HOST";
     }
-    if (!port) {
+    if (!extraData.port) {
       throw "INVALID_PORT";
     }
 
-    var _internalId = ++_currentRequestId;
+    var host = extraData.host;
+    var port = extraData.port;
+    var options = extraData.options;
 
     var _resolve, _reject;
     var _sock = new Promise((resolve, reject) => {
@@ -135,7 +161,7 @@
       bufferedAmount: 0,
       readyState: "connecting",
       binaryType: options.binaryType == "arraybuffer" ? "arraybuffer"
-                                                      : "string",
+                                                      : "string"
     };
 
     Object.keys(_internalProps).forEach(key =>
@@ -169,25 +195,16 @@
         },
         set: function(cb) {
           _handlers[handler] = cb;
-          _sendAPICall({
-            serialize: function() {
-              return {
-                id: ++_currentRequestId,
-                  data: {
-                    operation: handler
-                  },
-                processAnswer: answer => cb(answer.data)
-              };
-            }
-          });
+          navConnPromise.queueDependentRequest({handler: handler, cb: cb},
+                                               HandlerSetRequest,
+                                               _sock, 'socketId');
         }
       })
     );
 
     this.serialize = function() {
-      var self= this;
       return {
-        id: _internalId,
+        id: reqId,
         data: {
           operation: 'open',
           params: [host, port, options]
@@ -198,10 +215,10 @@
           if (_sockId === null) {
             if (!answer.error) {
               _resolve(answer.socketId);
-              self.readyState = 'open';
+              _internalProps.readyState = 'open';
             } else {
               var permaFail = 'Error creating socket: ' + answer.error;
-              this.readyState = 'closed';
+              _internalProps.readyState = 'closed';
               _reject(permaFail);
             }
             return;
@@ -215,38 +232,58 @@
       };
     };
 
-//  void upgradeToSecure();
-//  void suspend();
-//  void resume();
-//  void close();
+    var _ops = {
+      upgradeToSecure: {
+        numParams: 0,
+        returnValue: VoidRequest
+      },
+      suspend: {
+        numParams: 0,
+        returnValue: VoidRequest
+      },
+      resume: {
+        numParams: 0,
+        returnValue: VoidRequest
+      },
+      close: {
+        numParams: 0,
+        returnValue: VoidRequest
+      }
+    };
 
-    //  boolean send(in jsval data, [optional] in unsigned long byteOffset,
+    for (var _op in _ops) {
+      this[_op] =
+        navConnPromise.methodCall.bind(navConnPromise,
+                                       {
+                                         methodName: _op,
+                                         numParams: _ops[_op].numParams,
+                                         returnValue: _ops[_op].retValue,
+                                         promise: _sock,
+                                         field: 'socketId'
+                                       });
+    }
+
+    // boolean send(in jsval data, [optional] in unsigned long byteOffset,
     //              [optional] in unsigned long byteLength);
     // Synchronous API agh!
     this.send = function(dataToSend, byteOffset, byteLength) {
-      // Hmm... can be send uint8?
+      // Hmm... can uint8 be sent?
       if (this.readyState !== 'open') {
+        debug('I\'m not ready');
         return false;
       }
-
-      var commandObject = {
-        serialize: function() {
-          return {
-            id: ++_currentRequestId,
-            data: {
-              operation: 'send',
-              params: [dataToSend, byteOffset, byteLength]
-            },
-            processAnswer: () =>
-              debug("Got an answer for send! We really shouldn't")
-          };
-        }
-      };
-
-      _sendAPICall(commandObject);
+      navConnPromise.methodCall(
+        {
+          methodName: 'send',
+          numParams: 3,
+          returnValue: VoidRequest,
+          promise: _sock,
+          field: 'socketId'
+        },
+        dataToSend, byteOffset, byteLength
+      );
       return true;
     };
-
   }
 
   // For the time being, only client sockets!
@@ -254,9 +291,11 @@
   // constructor worked)
   window.navigator.mozTCPSocket = {
     open: function(host, port, options) {
-      var newSock = new FakeTCPSocket(host, port, options);
-      navConnPromise.then(navConnHelper => navConnHelper.sendObject(newSock));
-      return newSock;
+      return navConnPromise.createAndQueueRequest({
+        host: host,
+        port: port,
+        options: options
+      }, FakeTCPSocket);
     }
   };
 
