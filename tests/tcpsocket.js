@@ -32,15 +32,18 @@
 
         socket.onopen = function() {
           log("Socket opened!");
-          socket.ondata = function(data) {
-              log("Got some data: " + JSON.stringify(data));
+          socket.ondata = function(event) {
+            log("Got some data: " + JSON.stringify(event));
+            if (event.data.byteLength) {
+              log("Got some data: " + JSON.stringify(new Uint8Array(event.data)));
+            }
           };
           var helloStr = 'Hello world!';
           var buff = new Uint8Array(helloStr.length);
           for(var i = 0, j = helloStr.length; i<j; ++i) {
             buff[i]=helloStr.charCodeAt(i);
           }
-          socket.send(buff);
+          socket.send(buff.buffer);
         };
 
       } catch (e) {
