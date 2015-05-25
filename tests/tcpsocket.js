@@ -22,7 +22,7 @@
         log('window.navigator.mozTCPSocket defined!');
         var host = '192.168.1.38';
         var port = 12345;
-        var options = {};
+        var options = {binaryType: 'arraybuffer'};
         log('Starting test');
         var socket = _mozTCPSocket.open(host, port, options);
 
@@ -35,8 +35,12 @@
           socket.ondata = function(data) {
               log("Got some data: " + JSON.stringify(data));
           };
-
-          socket.send('Hi there');
+          var helloStr = 'Hello world!';
+          var buff = new Uint8Array(helloStr.length);
+          for(var i = 0, j = helloStr.length; i<j; ++i) {
+            buff[i]=helloStr.charCodeAt(i);
+          }
+          socket.send(buff);
         };
 
       } catch (e) {
