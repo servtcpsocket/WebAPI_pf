@@ -250,6 +250,34 @@
     };
   }
 
+  function HandlerSetRequest(reqId, extraData) {
+    this.serialize = function() {
+      return {
+        id: reqId,
+        data: {
+          operation: extraData.handler,
+          socketId: extraData.socketId
+        },
+        processAnswer: answer => extraData.cb(answer.event)
+      };
+    };
+  }
+
+  function VoidRequest(reqId, extraData) {
+    function debug(text) {
+      console.log('*-*-* VoidRequest: ' + text);
+    }
+    this.serialize = function() {
+      return {
+        id: reqId,
+        data: extraData,
+        processAnswer: answer => debug('Got an invalid answer for: ' + reqId)
+      };
+    };
+  }
+
+  window.VoidRequest = VoidRequest;
+  window.HandlerSetRequest = HandlerSetRequest;
   window.NavConnectHelper = NavConnectHelper;
   window.FakeDOMRequest = FakeDOMRequest;
   window.FakeDOMCursorRequest = FakeDOMCursorRequest;

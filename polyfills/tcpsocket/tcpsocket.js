@@ -96,29 +96,6 @@
   // Wishful thinking at the moment...
   const TCPSOCKET_SERVICE = 'https://tcpsocketservice.gaiamobile.org';
 
-  function VoidRequest(reqId, extraData) {
-    this.serialize = function() {
-      return {
-        id: reqId,
-        data: extraData,
-        processAnswer: answer => debug('Got an invalid answer for: ' + reqId)
-      };
-    };
-  }
-
-  function HandlerSetRequest(reqId, extraData) {
-    this.serialize = function() {
-      return {
-        id: reqId,
-        data: {
-          operation: extraData.handler,
-          socketId: extraData.socketId
-        },
-        processAnswer: answer => extraData.cb(answer.event)
-      };
-    };
-  }
-
   // TCPSocket polyfill..
   function FakeTCPSocket(reqId, extraData) {
     // extraData will hold host, port, options
