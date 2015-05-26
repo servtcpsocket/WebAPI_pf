@@ -60,6 +60,7 @@
 
   function setHandler(eventType, channel, request) {
     var socketId = request.remoteData.data.socketId;
+    var socket = _sockets[socketId];
 
     function handlerTemplate(evt) {
       // evt is a TCPSocketEvent which has:
@@ -68,7 +69,9 @@
       //   * type
       //   * then => undefined
       var evtCopy = {
-        data: evt.data,
+        data: (evt.type === 'data' && socket.binaryType === 'arraybuffer')
+          ? Array.from(new Uint8Array(evt.data))
+          : evt.data,
         target: socketId,
         type: evt.type,
         then: undefined
@@ -77,7 +80,7 @@
     }
 
     if (_sockets[socketId]) {
-      _sockets[socketId][eventType] = handlerTemplate;
+      socket[eventType] = handlerTemplate;
       if (_eventQueue[socketId] && _eventQueue[socketId][eventType]) {
         var event;
         while (event = _eventQueue[socketId][eventType].shift()) {
@@ -108,11 +111,25 @@
     _operations[event] = setHandler.bind(undefined, event);
   });
 
+  var _preProcess = {
+    send: (socket, params) => {
+      if (socket.binaryType === 'arraybuffer') {
+        // Spec says sends can receive a Uint8Array... spec lies.
+        // If you pass a uint8Array directly you get a nice out of memory error.
+        params[0] = Uint8Array.from(params[0]).buffer;
+        params[1] = params[1] || 0;
+        params[2] = params[2] || params[0].byteLength;
+      }
+    }
+  };
+
   ['send', 'resume', 'close', 'upgradeToSecure'].forEach(op => {
     _operations[op] = function(channel, request) {
       var funcData = request.remoteData.data;
-      _sockets[funcData.socketId][op](...funcData.params);
-      // We're not going answer anything here
+      var socket = _sockets[funcData.socketId];
+      _preProcess[op] && _preProcess[op](socket, funcData.params);
+      socket[op](...funcData.params);
+      // We're not going to answer anything here
     };
   });
 
@@ -124,7 +141,6 @@
       _operations[operation](channel, evt.data);
 
   };
-
 
   // Testing purpose only!!!!
   window.addEventListener('load', function () {
