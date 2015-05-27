@@ -52,10 +52,10 @@
         var dest = cloned[key];
         var source = obj[key];
         for (var i = 0, l = source.length; i < l; i++) {
-          dest[i] = cloneObject(source[i]);
+          dest[i] = cloneObject(source[i], recursive);
         }
       } else if (typeof obj[key] === 'object') {
-        cloned[key] = !recursive && cloneObject(obj[key]) || obj[key];
+        cloned[key] = recursive && cloneObject(obj[key], recursive) || obj[key];
       } else if (typeof obj[key] !== 'function' || obj[key] === null) {
         cloned[key] = obj[key];
       }

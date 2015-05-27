@@ -244,7 +244,7 @@
                                        {
                                          methodName: _op,
                                          numParams: _ops[_op].numParams,
-                                         returnValue: _ops[_op].retValue,
+                                         returnValue: _ops[_op].returnValue,
                                          promise: _sock,
                                          field: 'socketId'
                                        });
@@ -266,7 +266,7 @@
           throw 'INVALID_DATA_TYPE';
         }
         // Not very efficient, this, but IAC doesn't like Uint8Arrays
-        dataToSend = Array.from(dataToSend);
+        dataToSend = Array.from(new Uint8Array(dataToSend));
       }
       navConnPromise.methodCall(
         {
