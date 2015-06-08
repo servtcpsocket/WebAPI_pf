@@ -55,17 +55,17 @@
 
   var realGetDeviceStorage = navigator.getDeviceStorage.bind(navigator);
   var realGetDeviceStorages = navigator.getDeviceStorages.bind(navigator);
+  var FakeDOMRequest = window.FakeDOMRequest;
+  var OnChangeRequest = window.OnChangeRequest;
 
   // Wishful thinking at the moment...
   const DEVICESTORAGE_SERVICE = 'https://devicestorageservice.gaiamobile.org';
 
-  // It's nice being monothread...
-  var _currentRequestId = 1;
   var _deviceStorageAttributes = ['canBeFormatted', 'canBeMounted',
     'canBeShared', 'default', 'isRemovable', 'storageName'];
 
   // DeviceStorage polyfill..
-  function FakeDeviceStorage(type, realDeviceStorage) {
+  function FakeDeviceStorage(reqId, extraData) {
 
     var _resolve, _reject;
     var _deviceStorage = new Promise((resolve, reject) => {
@@ -78,133 +78,100 @@
     var _deviceStorageId = null;
     _deviceStorage.then(id => _deviceStorageId = id);
 
-    function _createAndQueueRequest(data, constructor) {
-      var request = new constructor(++_currentRequestId, data);
-      _sendRequest(request);
-      return request;
-    }
-
-    function _sendRequest(request) {
-      Promise.all([navConnPromise, _deviceStorage]).then(values => {
-        // When this is executed the promise should have resolved and thus we
-        // should have this.
-        request.data.deviceStorageId = _deviceStorageId;
-        values[0].sendObject(request);
-      });
-    }
-
     // realDeviceStorage object can't be used without permissions
     _deviceStorageAttributes.forEach(attr => {
-      this[attr] = realDeviceStorage[attr];
+      this[attr] = extraData.realDeviceStorage[attr];
     });
 
-    FakeEventTarget.call(this, _sendRequest);
+    FakeEventTarget.call(this, navConnHelper, null, 'deviceStorageId',
+      _deviceStorage);
 
-    this.add = function(file) {
-      return _createAndQueueRequest({
-        operation: 'add',
-        params: file
-      }, FakeDOMRequest);
-    };
+    [{
+      method: 'add',
+      numParams: 1
+    },
+    {
+      method: 'addNamed',
+      numParams: 2
+    },
+    {
+      method: 'available',
+      numParams: 0
+    },
+    {
+      method: 'delete',
+      numParams: 1
+    },
+    {
+      method: 'freeSpace',
+      numParams: 0
+    },
+    {
+      method: 'get',
+      numParams: 1
+    },
+    {
+      method: 'getEditable',
+      numParams: 1
+    },
+    {
+      method: 'usedSpace',
+      numParams: 0
+    },
+    {
+      method: 'enumerate',
+      returnValue: FakeDOMCursorRequest,
+      numParams: 2
+    },
+    {
+      method: 'enumerateEditable',
+      returnValue: FakeDOMCursorRequest,
+      numParams: 2
+    }].forEach(methodInfo => {
+      this[methodInfo.method] = navConnHelper.methodCall.bind(navConnHelper,
+        {
+          methodName: methodInfo.method,
+          numParams: methodInfo.numParams,
+          returnValue: methodInfo.returnValue || FakeDOMRequest,
+          promise: _deviceStorage,
+          field: 'deviceStorageId'
+        });
+    });
 
-    this.addNamed = function(file, name) {
-      return _createAndQueueRequest({
-        operation: 'addNamed',
-        params: [file, name]
-      }, FakeDOMRequest);
-    };
-
-    this.available = function() {
-      return _createAndQueueRequest({
-        operation: 'available'
-      }, FakeDOMRequest);
-    };
-
-    this.delete = function(name) {
-      return _createAndQueueRequest({
-        operation: 'delete',
-        params: name
-      }, FakeDOMRequest);
-    };
-
-    this.freeSpace = function() {
-      return _createAndQueueRequest({
-        operation: 'freeSpace'
-      }, FakeDOMRequest);
-    };
-
-    this.get = function(name) {
-      return _createAndQueueRequest({
-        operation: 'get',
-        params: name
-      }, FakeDOMRequest);
-    };
-
-    this.getEditable = function(name) {
-      return _createAndQueueRequest({
-        operation: 'getEditable',
-        params: name
-      }, FakeDOMRequest);
-    };
-
-    this.usedSpace = function() {
-      return _createAndQueueRequest({
-        operation: 'usedSpace'
-      }, FakeDOMRequest);
-    };
-
-    this.enumerate = function(path, options) {
-      var params = [path, options];
-      return _createAndQueueRequest({
-        operation: 'enumerate',
-        params: params
-      }, FakeDOMCursorRequest);
-    };
-
-    this.enumerateEditable = function(path, options) {
-      var params = [];
-      if (typeof path !== 'undefined') {
-        params.push(path);
-      }
-
-      if (typeof options !== 'undefined') {
-        params.push(options);
-      }
-
-      return _createAndQueueRequest({
-        operation: 'enumerateEditable',
-        params: params
-      }, FakeDOMCursorRequest);
-    };
+    function execOnChange(evt) {
+      this._onchange && typeof this._onchange === 'function' &&
+        this._onchange(evt);
+    }
 
     Object.defineProperty(this, 'onchange', {
       set: function(cb) {
         this._onchange = cb;
-        this._onchangeId = this._onchangeId || ++_currentRequestId;
-        var commandObject = {
-          serialize: function() {
-            return {
-              id: ++_currentRequestId,
-              data: {
-                operation: 'onchange',
-                deviceStorageId: _deviceStorageId
-              },
-              processAnswer: answer => cb(answer.result)
-            };
-          }
-        };
-        navConnPromise.
-          then(navConnHelper => navConnHelper.sendObject(commandObject));
+        // Avoid to send another request because it's useless
+        if (this._onchangeAlreadySet) {
+          return;
+        }
+        this._onchangeAlreadySet = true;
+        var self = this;
+        navConnHelper.methodCall({
+                                  methodName: 'onchange',
+                                  numParams: 0,
+                                  returnValue: OnChangeRequest,
+                                  extraData: {
+                                    callback: execOnChange.bind(self)
+                                  },
+                                  promise: _deviceStorage,
+                                  field: 'deviceStorageId'
+                                });
       }
     });
 
     this.serialize = function() {
       var self = this;
       return {
-        id: ++_currentRequestId,
+        id: reqId,
         data: {
           operation: 'getDeviceStorage',
-          params: type,
+          params: [extraData.type],
           storageName: self.storageName
         },
         processAnswer: function(answer) {
@@ -220,11 +187,10 @@
 
   // Returns a DeviceStorage object to safely access a storage area
   var getDeviceStorageCustom = function(type) {
-    var deviceStorage =
-      new FakeDeviceStorage(type, realGetDeviceStorage(type));
-    navConnPromise.then(navConnHelper =>
-      navConnHelper.sendObject(deviceStorage));
-    return deviceStorage;
+    return navConnHelper.createAndQueueRequest({
+        type: type,
+        realDeviceStorage: realGetDeviceStorage(type)
+      }, FakeDeviceStorage);
   };
 
   var getDeviceStoragesCustom = function(type) {
@@ -232,9 +198,10 @@
     var fakeDeviceStorages = [];
 
     realDeviceStorages.forEach(realDeviceStorage => {
-      var deviceStorage = new FakeDeviceStorage(type, realDeviceStorage);
-      navConnPromise.then(navConnHelper =>
-        navConnHelper.sendObject(deviceStorage));
+      var deviceStorage = navConnHelper.createAndQueueRequest({
+          type: type,
+          realDeviceStorage: realGetDeviceStorage(type)
+        }, FakeDeviceStorage);
       fakeDeviceStorages.push(deviceStorage);
     });
 
@@ -245,92 +212,12 @@
   navigator.getDeviceStorage = getDeviceStorageCustom;
   navigator.getDeviceStorages = getDeviceStoragesCustom;
 
-  var navConnPromise = new NavConnectHelper(DEVICESTORAGE_SERVICE);
+  var navConnHelper = new NavConnectHelper(DEVICESTORAGE_SERVICE);
 
-  navConnPromise.then(function(){}, e => {
+  navConnHelper.then(function(){}, e => {
     debug('Got an exception while connecting ' + e);
     window.navigator.getDeviceStorage = realGetDeviceStorage;
     window.navigator.getDeviceStorages = realGetDeviceStorages;
   });
-
-  function FakeEventTarget(sendRequestMethod) {
-    // _listeners[type][function] => undefined or an Listener object
-    var _listeners = {};
-
-    // And this is something else that might be reusable...
-    function Listener(event, callback, useCapture) {
-      this._id = null;
-      this.type = event;
-      this.data = {
-        operation: 'addEventListener',
-        type: event,
-        useCapture: useCapture
-      };
-      this.serialize = () => {
-        if (!this._id) {
-          this._id = ++_currentRequestId;
-        }
-        return {
-          id: this._id,
-          data: this.data,
-          processAnswer: answer => callback(answer.event)
-        };
-      };
-    }
-
-    function ListenerRemoval(listener) {
-      this.data = {
-        operation: 'removeEventListener',
-        type: listener.type,
-      }; 
-      this.serialize = () => {
-        return {
-          id: listener._id,
-          data: this.data
-        };
-      };
-    }
-
-    function Dispatcher(event) {
-      this._id = null;
-      this.data = {
-        operation: 'dispatchEvent',
-        event: event
-      };
-      this.serialize = () => {
-        if (!this._id) {
-          this._id = ++_currentRequestId;
-        }
-        return {
-          id: this._id,
-          data: this.data,
-          processAnswer: null
-        };
-      };
-    }
-
-    this.addEventListener = function(type, cb, useCapture) {
-      var listener = new Listener(type, cb, useCapture);
-      if (!_listeners[type]) {
-        _listeners[type] = {};
-      }
-      _listeners[type][cb] = listener;
-      sendRequestMethod(listener);
-    };
-
-    this.removeEventListener = function(type, cb) {
-      if (!_listeners[type][cb]) {
-        return;
-      }
-      var listenerRemoval = new ListenerRemoval(_listeners[type][cb]);
-      sendRequestMethod(listenerRemoval);
-      delete _listeners[type][cb];
-    };
-
-    this.dispatchEvent = function(event) {
-      var dispatcher = new Dispatcher(event);
-      sendRequestMethod(dispatcher);
-    };
-  }
 
 })(window);

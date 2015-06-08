@@ -98,16 +98,24 @@
       var methodName = options.methodName;
       var numParams = options.numParams;
       var returnValue = options.returnValue;
+      var extraData = options.extraData || {};
       var params = [];
       // It's not recommended calling splice on arguments apparently.
       // Also, first three arguments are explicit
       for(var i = 1; i < numParams + 1; i++) {
         params.push(arguments[i]);
       }
-      return this.queueDependentRequest({
+      var data = {
         operation: methodName,
         params: params
-      }, returnValue, options.promise, options.field);
+      };
+
+      for (var key in extraData) {
+        data[key] = extraData[key];
+      }
+
+      return this.queueDependentRequest(data,
+        returnValue, options.promise, options.field);
     };
 
     return retValue;
@@ -265,7 +273,13 @@
           data: extraData,
           processAnswer: answer => {
             if (answer.event) {
-              listenerCb(answer.event, _listeners[extraData.type][reqId]);
+              if (typeof listenerCb === 'function') {
+                listenerCb(answer.event, _listeners[extraData.type][reqId]);
+              } else {
+                _listeners[extraData.type] &&
+                  typeof _listeners[extraData.type][reqId] === 'function' &&
+                  _listeners[extraData.type][reqId](answer.event);
+              }
             }
           }
         };

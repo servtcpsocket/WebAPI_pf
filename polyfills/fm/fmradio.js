@@ -46,6 +46,9 @@
     return;
   }
 
+  var FakeDOMRequest = window.FakeDOMRequest;
+  var OnChangeRequest = window.OnChangeRequest;
+
   // Wishful thinking at the moment...
   const FMRADIO_SERVICE = 'https://fmradioservice.gaiamobile.org';
 
@@ -168,23 +171,24 @@
       });
     });
 
-    this._onpropertychange = function(event) {
+    function execOnChange(changeType, event) {
       this['_' + event.property] = event.propertyValue;
-      this['_' + event.type](event);
-    };
+      var cb = '_on' + changeType;
+      this[cb] && typeof this[cb] === 'function' && this[cb](event);
+    }
 
     this._onchange = function(changeType, property, cb) {
       this['_on' + changeType] = cb;
-      if (this['_on' + changeType + 'Id']) {
+      if (this['_on' + changeType + 'AlreadySet']) {
         return;
       }
       // Avoid to send another request because it's useless
-      this['_on' + changeType + 'Id'] = 1;
+      this['_on' + changeType + 'AlreadySet'] = true;
 
       navConnPromise.createAndQueueRequest({
         operation: 'on' + changeType,
         property: property,
-        callback: self._onpropertychange.bind(self)
+        callback: execOnChange.bind(self, changeType)
       }, OnChangeRequest);
     };
 

@@ -11,27 +11,39 @@
   // be sent to the client. Yay us!
   var _locks = {};
   var _observers = {};
+  var _settings = navigator.mozSettings;
 
-  var processSWRequest = function(channel, evt) {
+  function buildDOMRequestAnswer(operation, channel, request) {
+    debug('Building call --> ' + JSON.stringify(request));
+    var remotePortId = request.remotePortId;
+    var reqId = request.remoteData.id;
+    var opData = request.remoteData.data.params || [];
+    var requestOp = request.remoteData.data;
 
-    var _settings = navigator.mozSettings;
-    // We can get:
-    // * createLock
-    // * addObserver
-    // * removeObserver
-    // * lock.set || lock.get
-    // All the operations have a requestId, and the lock operations also include
-    // a lock id.
-    var remotePortId = evt.data.remotePortId;
-    var request = evt.data.remoteData;
-    var requestOp = request.data;
+    // It's either a get or a set... or an error but let's assume it isn't :P
+    if (_locks[requestOp.lockId].closed) {
+      _locks[requestOp.lockId] = _settings.createLock();
+    }
+
+    _locks[requestOp.lockId][operation](...opData).then(result => {
+      channel.postMessage({
+        remotePortId: remotePortId,
+        data: { id : reqId, result: result}}
+      );
+    });
+  }
+
+  function setHanlder(operation, channel, request) {
+    var remotePortId = request.remotePortId;
+    var reqId = request.remoteData.id;
+    var requestOp = request.remoteData.data;
 
     function observerTemplate(evt) {
       channel.postMessage({
         remotePortId: remotePortId,
         data: {
-          id: request.id,
-          data: {
+          id: reqId,
+          event: {
             settingName: evt.settingName,
             settingValue: evt.settingValue
           }
@@ -39,35 +51,83 @@
       });
     }
 
-    if (requestOp.operation === 'createLock') {
-      _locks[request.id] = _settings.createLock();
-      // Let's assume this works always..
-      channel.postMessage({remotePortId: remotePortId, data: {id: request.id}});
-    } else if (requestOp.operation === 'addObserver') {
-      _observers[request.id] = observerTemplate;
-      _settings.addObserver(requestOp.settingName, _observers[request.id]);
-    } else if (requestOp.operation === 'removeObserver') {
-      _settings.removeObserver(_observers[request.id]);
-    } else if (requestOp.operation === 'onsettingschange') {
-      _settings.onsettingchange = observerTemplate;
+    if (operation === 'addObserver') {
+      _observers[reqId] = observerTemplate;
+      _settings.addObserver(requestOp.settingName, _observers[reqId]);
     } else {
-      // It's either a get or a set... or an error but let's assume it isn't :P
-      if (_locks[requestOp.lockId].closed) {
-        _locks[requestOp.lockId] = _settings.createLock();
-      }
+      _settings.onsettingchange = observerTemplate;
+    }
+  }
 
-      _locks[requestOp.lockId][requestOp.operation](requestOp.settings).
-        then(result => {
-          channel.postMessage({
-            remotePortId: remotePortId,
-            data: { id : request.id, result: result}}
-          );
-      });
+  var _operations = {
+    createLock: function(channel, request) {
+      var remotePortId = request.remotePortId;
+      var reqId = request.remoteData.id;
+      _locks[reqId] = _settings.createLock();
+      // Let's assume this works always..
+      channel.postMessage({remotePortId: remotePortId, data: {id: reqId}});
+    },
+
+    addObserver: setHanlder.bind(undefined, 'addObserver'),
+
+    removeObserver: function(channel, request) {
+      var reqId = request.remoteData.id;
+      var requestOp = request.remoteData.data;
+      _settings.removeObserver(requestOp.settingName,
+        _observers[requestOp.observerId]);
+    },
+
+    onsettingschange: setHanlder.bind(undefined, 'onsettingschange'),
+
+    get: buildDOMRequestAnswer.bind(this, 'get'),
+
+    set: buildDOMRequestAnswer.bind(this, 'set')
+  };
+
+  var processSWRequest = function(aAcl, aChannel, aEvt) {
+    // We can get:
+    // * createLock
+    // * addObserver
+    // * removeObserver
+    // * lock.set || lock.get
+    // All the operations have a requestId, and the lock operations also include
+    // a lock id.
+    var request = aEvt.data.remoteData;
+    var requestOp = request.data.operation;
+    var targetURL = aEvt.data.targetURL;
+
+    var forbidCall = function(constraints) {
+      var settings = [];
+      switch(requestOp) {
+        case 'addObserver':
+        case 'removeObserver':
+          settings = [request.data.settingName];
+          break;
+        case 'set':
+          settings = Object.keys(request.data.params[0]);
+          break;
+        case 'get':
+          settings = request.data.params;
+          break;
+      }
+      return !settings.every(setting => constraints.indexOf(setting) >= 0);
+    };
+
+    if (window.ServiceHelper.isForbidden(aAcl, targetURL, requestOp,
+                                         forbidCall)) {
+      return;
+    }
+
+    debug('processSWRequest --> processing a msg:' +
+          (aEvt.data ? JSON.stringify(aEvt.data): 'msg without data'));
+    if (requestOp in _operations) {
+      _operations[requestOp] &&
+        _operations[requestOp](aChannel, aEvt.data);
+    } else {
+      console.error('Settings service unknown operation:' + requestOp);
     }
   };
 
-
-  // Testing purpose only!!!!
   window.addEventListener('load', function () {
     if (window.ServiceHelper) {
       debug('APP serviceWorker in navigator');

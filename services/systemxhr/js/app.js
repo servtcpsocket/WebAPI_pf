@@ -108,7 +108,8 @@
     removeEventListener: function(channel, request) {
       var requestOp = request.remoteData.data;
       var xhrId = request.remoteData.data.xhrId;
-      _XMLHttpRequests[xhrId].removeObserver(_listeners[requestOp.listenerId]);
+      _XMLHttpRequests[xhrId].removeEventListener(
+        _listeners[requestOp.listenerId]);
     },
 
     dispatchEvent: function(channel, request) {
@@ -122,7 +123,7 @@
       _operations[evt] = setHandler.bind(undefined, evt);
   });
 
-  var processSWRequest = function(channel, evt) {
+  var processSWRequest = function(aAcl, aChannel, aEvt) {
     // We can get:
     // * methodName
     // * onpropertychange
@@ -132,14 +133,27 @@
     // * dispatchEvent
     // All the operations have a requestId, and all the operations over
     // a XMLHttpRequest also include a xhr id.
-    var request = evt.data.remoteData;
+    var request = aEvt.data.remoteData;
     var requestOp = request.data.operation;
+    var targetURL = aEvt.data.targetURL;
+
+    // TODO: Add resource access constraint
+    // It should return true if resource access is forbidden,
+    // false if it's allowed
+    var forbidCall = function(constraints) {
+      return false;
+    };
+
+    if (window.ServiceHelper.isForbidden(aAcl, targetURL, requestOp,
+                                         forbidCall)) {
+      return;
+    }
 
     debug('processSWRequest --> processing a msg:' +
-          (evt.data ? JSON.stringify(evt.data): 'msg without data'));
+          (aEvt.data ? JSON.stringify(aEvt.data): 'msg without data'));
     if (requestOp in _operations) {
       _operations[requestOp] &&
-        _operations[requestOp](channel, evt.data);
+        _operations[requestOp](aChannel, aEvt.data);
     } else {
       console.error('SystemXHR service unknown operation:' + requestOp);
     }

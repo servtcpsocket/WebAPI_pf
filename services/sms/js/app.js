@@ -133,15 +133,29 @@ debug('load handler for ' + eventType);
   });
 
 
-  var processSWRequest = function(channel, evt) {
+  var processSWRequest = function(aAcl, aChannel, aEvt) {
     debug('processSWRequest --> processing a msg:' +
-          (evt.data ? JSON.stringify(evt.data): 'msg without data'));
+          (aEvt.data ? JSON.stringify(aEvt.data): 'msg without data'));
 
-    var request = evt.data.remoteData;
+    var request = aEvt.data.remoteData;
     var requestOp = request.data.operation;
+    var targetURL = aEvt.data.targetURL;
+
+    // TODO: Add resource access constraint
+    // It should return true if resource access is forbidden,
+    // false if it's allowed
+    var forbidCall = function(constraints) {
+      return false;
+    };
+
+    if (window.ServiceHelper.isForbidden(aAcl, targetURL, requestOp,
+                                         forbidCall)) {
+      return;
+    }
+
     if (requestOp in _operations) {
       _operations[requestOp] &&
-        _operations[requestOp](channel, evt.data);
+        _operations[requestOp](aChannel, aEvt.data);
     } else {
       console.error('SMS service unknown operation:' + requestOp.op);
     }

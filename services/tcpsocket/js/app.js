@@ -134,11 +134,25 @@
   });
 
   // At this point I could change this (again) and move this to the common part
-  var processSWRequest = function(channel, evt) {
-    var operation = evt.data.remoteData.data.operation;
+  var processSWRequest = function(aAcl, aChannel, aEvt) {
+    var operation = aEvt.data.remoteData.data.operation;
+    var targetURL = aEvt.data.targetURL;
+
+    // TODO: Add resource access constraint
+    // It should return true if resource access is forbidden,
+    // false if it's allowed
+    var forbidCall = function(constraints) {
+      return false;
+    };
+
+    if (window.ServiceHelper.isForbidden(aAcl, targetURL, operation,
+                                         forbidCall)) {
+      return;
+    }
+
 
     _operations[operation] &&
-      _operations[operation](channel, evt.data);
+      _operations[operation](aChannel, aEvt.data);
 
   };
 

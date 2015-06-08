@@ -39,101 +39,87 @@
   // Wishful thinking at the moment...
   const CONTACTS_SERVICE = 'https://contactsservice.gaiamobile.org';
 
-  // It's nice being monothread...
-  var _currentRequestId = 1;
+  var FakeDOMRequest = window.FakeDOMRequest;
+  var FakeDOMCursorRequest = window.FakeDOMCursorRequest;
+  var OnChangeRequest = window.OnChangeRequest;
 
-  // This should be on a common part in the future
-  function _createAndQueueRequest(data, constructor) {
-    var request = new constructor(++_currentRequestId, data);
-    navConnPromise.
-          then(navConnHelper => navConnHelper.sendObject(request));
-    return request;
+  function FakeMozContacts() {
+    this._oncontactchange = null;
+    this._oncontactAlreadySet = false;
+
+    function execOnChange(event) {
+      this._oncontactchange && typeof this._oncontactchange === 'function' &&
+        this._oncontactchange(event);
+    }
+
+    Object.defineProperty(this, 'oncontactchange', {
+      get: function() {
+        return this._oncontactchange;
+      },
+
+      set: function(cb) {
+        this._oncontactchange = cb;
+        if (this._oncontactAlreadySet) {
+          return;
+        }
+
+        var self = this;
+
+        this._oncontactAlreadySet = true;
+        navConnHelper.createAndQueueRequest({
+                                              operation: 'oncontactchange',
+                                              callback: execOnChange.bind(self)
+                                            }, OnChangeRequest);
+      }
+    });
+
+    [{
+      methodName: 'clear',
+      numParams: 0
+    },
+    {
+      methodName: 'find',
+      numParams: 1
+    },
+    {
+      methodName: 'getAll',
+      numParams: 1,
+      returnValue: FakeDOMCursorRequest
+    },
+    {
+      methodName:'getCount',
+      numParams: 0
+    },
+    {
+      methodName:'getRevision',
+      numParams: 0
+    },
+    {
+      methodName:'remove',
+      numParams: 1
+    },
+    {
+      methodName:'save',
+      numParams: 1
+    }
+    ].forEach(methodInfo => {
+      this[methodInfo.methodName] = navConnHelper.methodCall.bind(navConnHelper,
+        {
+          methodName: methodInfo.methodName,
+          numParams: methodInfo.numParams,
+          returnValue: methodInfo.returnValue || FakeDOMRequest
+        });
+    });
   }
 
-  window.navigator.mozContacts = {
-    _oncontactchange: null,
-    _oncontactchangeId: null,
-
-    get oncontactchange() {
-      return this._oncontactchange;
-    },
-
-    set oncontactchange(cb) {
-      this._oncontactchange = cb;
-      if (this._oncontactchangeId) {
-        return;
-      }
-
-      this._oncontactchangeId = this._oncontactchangeId || ++_currentRequestId;
-      var commandObject = {
-        serialize: function() {
-          return {
-            id: ++_currentRequestId,
-            data: {
-              operation: 'oncontactchange'
-            },
-            processAnswer: answer => self._oncontactchange &&
-              self._oncontactchange(answer.event)
-          };
-        }
-      };
-      navConnPromise.
-        then(navConnHelper => navConnHelper.sendObject(commandObject));
-    },
-
-    clear: function() {
-      return _createAndQueueRequest({
-        operation: 'clear'
-      }, FakeDOMRequest);
-    },
-
-    find: function(options) {
-      return _createAndQueueRequest({
-        operation: 'find',
-        params: [options]
-      }, FakeDOMRequest);
-    },
-
-    getAll: function(options) {
-      return _createAndQueueRequest({
-        operation: 'getAll',
-        params: [options]
-      }, FakeDOMCursorRequest);
-    },
-
-    getCount: function() {
-      return _createAndQueueRequest({
-        operation: 'getCount'
-      }, FakeDOMRequest);
-    },
-
-    getRevision: function() {
-      return _createAndQueueRequest({
-        operation: 'getRevision'
-      }, FakeDOMRequest);
-    },
-
-    remove: function(contact) {
-      return _createAndQueueRequest({
-        operation: 'remove',
-        params: [contact]
-      }, FakeDOMRequest);
-    },
-
-    save: function(contact) {
-      return _createAndQueueRequest({
-        operation: 'save',
-        params: [contact]
-      }, FakeDOMRequest);
-    }
-  };
-
   /** POLYFILL PART **/
-  var navConnPromise = new NavConnectHelper(CONTACTS_SERVICE);
+  var navConnHelper = new NavConnectHelper(CONTACTS_SERVICE);
 
-  navConnPromise.then(function(){}, e => {
+  navConnHelper.then(function(){}, e => {
     debug('Got an exception while connecting ' + e);
     window.navigator.mozContacts = null;
   });
+
+  window.navigator.mozContacts = new FakeMozContacts();
 
 })(window);
